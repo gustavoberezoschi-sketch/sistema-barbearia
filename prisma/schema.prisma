@@ -28,23 +28,30 @@ model Barbearia {
   // Textos das mensagens de WhatsApp (vazio = texto padrão)
   msgConfirmacao String?
   msgLembrete    String?
-  criadoEm       DateTime @default(now())
 
-  usuarios     Usuario[]
-  filiais      Filial[]
-  barbeiros    Barbeiro[]
-  servicos     Servico[]
-  clientes     Cliente[]
-  agendamentos Agendamento[]
-  bloqueios    Bloqueio[]
-  produtos     Produto[]
-  comandas     Comanda[]
-  caixas       Caixa[]
-  planos       Plano[]
-  assinaturas  Assinatura[]
-  contas       ContaPagar[]
-  banners      Banner[]
-  parceiros    Parceiro[]
+  // Assinatura do KlarezaBarber (o que a barbearia paga para usar o sistema)
+  plano    String   @default("BAIRRO") // BAIRRO | CIDADE | NACIONAL
+  ciclo    String   @default("MENSAL") // MENSAL | ANUAL
+  pagoAte  String? // "2026-11-10"; vazio = sem vencimento controlado
+  suspensa Boolean  @default(false) // sem pagamento: painel e agendamento bloqueados
+  criadoEm DateTime @default(now())
+
+  usuarios          Usuario[]
+  filiais           Filial[]
+  barbeiros         Barbeiro[]
+  servicos          Servico[]
+  clientes          Cliente[]
+  agendamentos      Agendamento[]
+  bloqueios         Bloqueio[]
+  produtos          Produto[]
+  comandas          Comanda[]
+  caixas            Caixa[]
+  planos            Plano[]
+  assinaturas       Assinatura[]
+  contas            ContaPagar[]
+  banners           Banner[]
+  pagamentosSistema PagamentoSistema[]
+  parceiros         Parceiro[]
 }
 
 // Unidade (filial) da barbearia: endereço, expediente, equipe, agenda e caixa próprios.
@@ -411,4 +418,25 @@ model Parceiro {
   link        String?
   ativo       Boolean   @default(true)
   criadoEm    DateTime  @default(now())
+}
+
+// Pagamentos que a barbearia fez ao KlarezaBarber.
+model PagamentoSistema {
+  id            String    @id @default(cuid())
+  barbeariaId   String
+  barbearia     Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  plano         String
+  ciclo         String
+  valorCentavos Int
+  referenteAte  String // até quando esse pagamento cobre
+  observacao    String?
+  pagoEm        DateTime  @default(now())
+
+  @@index([barbeariaId, pagoEm])
+}
+
+// Configurações gerais do KlarezaBarber (uma linha só, id = "geral").
+model ConfigSistema {
+  id              String  @id @default("geral")
+  whatsappSuporte String? // número para as barbearias pedirem suporte ou mudança de plano
 }

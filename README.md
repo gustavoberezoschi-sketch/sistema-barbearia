@@ -43,6 +43,19 @@ o próprio login, os próprios dados e o próprio link de agendamento.
 - **Clube de vantagens:** parceiros com cupons de desconto, gerenciados no painel em "Página do cliente"
 - Salvar o horário na agenda do celular e cancelar pelo site (respeitando o prazo da barbearia)
 
+## Planos do KlarezaBarber
+
+| Plano | Mensal | Anual | Unidades | Assinantes ativos no clube |
+| --- | --- | --- | --- | --- |
+| Bairro | R$ 200 | R$ 2.000 | 1 | até 300 |
+| Cidade | R$ 400 | R$ 4.000 | 2 | até 500 |
+| Nacional | R$ 700 | R$ 7.000 | ilimitadas | ilimitados |
+
+Preços e limites ficam em `src/lib/planosSistema.ts`. Os limites são aplicados ao cadastrar
+unidade e assinante. Em `/admin` você define o plano de cada barbearia, registra pagamentos,
+acompanha a receita e suspende o acesso de quem não pagou. A página `/planos` mostra os planos
+para quem quiser contratar.
+
 ## Tecnologias
 
 Next.js 15 (React 19) · TypeScript · Tailwind CSS 4 · Prisma · PostgreSQL (Supabase) · hospedagem na Vercel

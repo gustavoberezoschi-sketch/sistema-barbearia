@@ -25,10 +25,10 @@ export default async function Unidade({ params }: { params: Promise<{ id: string
         voltar={{ href: "/painel/unidades", rotulo: "Unidades" }}
         acoes={
           f && (
-            <form action={alternarFilial}>
+            <FormAcao acao={alternarFilial} className="flex flex-col items-end gap-1">
               <input type="hidden" name="id" value={f.id} />
               <button className={f.ativo ? "btn-perigo" : "btn-secundario"}>{f.ativo ? "Desativar unidade" : "Reativar unidade"}</button>
-            </form>
+            </FormAcao>
           )
         }
       />

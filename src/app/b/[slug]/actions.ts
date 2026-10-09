@@ -9,7 +9,7 @@ import { somenteDigitos } from "@/lib/formato";
 import { diaLocal, diaValido, formatarDiaExtenso, horaLocal, somarDias } from "@/lib/tempo";
 
 async function carregarBarbearia(slug: string) {
-  return db.barbearia.findUnique({ where: { slug } });
+  return db.barbearia.findFirst({ where: { slug, suspensa: false } });
 }
 
 function diaPermitido(dia: string, antecedenciaDias: number) {

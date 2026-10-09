@@ -5,6 +5,7 @@ import { Cabecalho, Etiqueta } from "@/components/ui";
 import { exigirGestor } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatarTelefone } from "@/lib/formato";
+import { usoDoPlano } from "@/lib/planosSistema";
 import { NOMES_DIAS } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Unidades" };
@@ -17,13 +18,21 @@ export default async function Unidades() {
     include: { horarios: { orderBy: { diaSemana: "asc" } }, _count: { select: { barbeiros: { where: { ativo: true } } } } },
     orderBy: [{ ativo: "desc" }, { ordem: "asc" }, { criadoEm: "asc" }],
   });
+  const uso = await usoDoPlano(barbeariaId);
+  const noLimite = uso.plano.unidades !== null && uso.unidades >= uso.plano.unidades;
 
   return (
     <div>
       <Cabecalho
         titulo="Unidades"
         descricao="Cada unidade tem endereço, horário, equipe, agenda e caixa próprios. Clientes, serviços e planos valem em todas."
-        acoes={<Link href="/painel/unidades/nova" className="btn-destaque"><Plus className="size-4" /> Nova unidade</Link>}
+        acoes={
+          noLimite ? (
+            <Link href="/painel/plano" className="btn-secundario">Plano {uso.plano.nome}: {uso.plano.unidades} unidade(s) · mudar plano</Link>
+          ) : (
+            <Link href="/painel/unidades/nova" className="btn-destaque"><Plus className="size-4" /> Nova unidade</Link>
+          )
+        }
       />
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {filiais.map((f) => (

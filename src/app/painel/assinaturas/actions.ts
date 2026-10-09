@@ -7,6 +7,7 @@ import { caixaAberto } from "@/lib/caixa";
 import { db } from "@/lib/db";
 import { filialDoPainel } from "@/lib/filial";
 import { FORMAS_PAGAMENTO, lerDinheiro } from "@/lib/formato";
+import { LimiteDoPlano, garantirVagaDeAssinante } from "@/lib/planosSistema";
 import { diaLocal, somarMeses } from "@/lib/tempo";
 import type { Resultado } from "../actions";
 
@@ -62,6 +63,12 @@ export async function novaAssinatura(_: Resultado, form: FormData): Promise<Resu
   if (!(forma in FORMAS_PAGAMENTO)) return { erro: "Escolha a forma de pagamento." };
   if (await db.assinatura.findFirst({ where: { clienteId: cliente.id, status: "ATIVA" } }))
     return { erro: `${cliente.nome} já tem uma assinatura ativa.` };
+  try {
+    await garantirVagaDeAssinante(barbeariaId);
+  } catch (e) {
+    if (e instanceof LimiteDoPlano) return { erro: e.message };
+    throw e;
+  }
 
   const hoje = diaLocal();
   const assinatura = await db.assinatura.create({

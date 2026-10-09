@@ -19,6 +19,9 @@ export async function criarBarbearia(dados: {
   dono: string;
   email: string;
   senha: string;
+  plano?: string;
+  ciclo?: string;
+  pagoAte?: string | null;
 }) {
   const nome = dados.nome.trim();
   const slug = gerarSlug(dados.slug?.trim() || nome);
@@ -34,6 +37,9 @@ export async function criarBarbearia(dados: {
     data: {
       nome,
       slug,
+      plano: dados.plano ?? "BAIRRO",
+      ciclo: dados.ciclo ?? "MENSAL",
+      pagoAte: dados.pagoAte ?? null,
       filiais: {
         create: {
           nome: "Unidade principal",

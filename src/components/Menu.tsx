@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   CalendarDays,
+  BadgeCheck,
   Building2,
   ChartColumn,
   Crown,
@@ -62,6 +63,7 @@ const GESTOR: Grupo[] = [
       { href: "/painel/unidades", rotulo: "Unidades", icone: Building2 },
       { href: "/painel/relatorios", rotulo: "Relatórios", icone: ChartColumn },
       { href: "/painel/configuracoes", rotulo: "Configurações", icone: Settings },
+      { href: "/painel/plano", rotulo: "Meu plano", icone: BadgeCheck },
     ],
   },
 ];

@@ -71,6 +71,9 @@ async function main() {
         instagram: demo.slug.replace(/-/g, ""),
         descricao: "Barbearia clássica com atendimento sem pressa, café passado na hora e cerveja gelada.",
         corDestaque: demo.cor,
+        plano: n === 0 ? "NACIONAL" : "BAIRRO",
+        ciclo: n === 0 ? "ANUAL" : "MENSAL",
+        pagoAte: n === 0 ? somarMeses(hoje, 11) : somarDias(hoje, 3),
         cashbackPct: 5,
         filiais: {
           create: demo.filiais.map((f, i) => ({
@@ -146,7 +149,8 @@ async function main() {
     await db.plano.create({
       data: { barbeariaId: b.id, nome: "Clube completo", descricao: "4 combos de corte + barba por mês.", precoCentavos: 19990, usosPorMes: 4, servicos: { connect: [{ id: porNome("Corte + barba").id }] } },
     });
-    for (const [i, cli] of [b.clientes[0], b.clientes[1]].entries()) {
+    const porNomeCliente = (nome: string) => b.clientes.find((c) => c.nome === nome)!;
+    for (const [i, cli] of [porNomeCliente("João Silva"), porNomeCliente("Pedro Souza")].entries()) {
       const ass = await db.assinatura.create({ data: { barbeariaId: b.id, clienteId: cli.id, planoId: plano.id, pagoAte: i === 0 ? somarMeses(hoje, 1) : somarDias(hoje, -3) } });
       await db.pagamentoAssinatura.create({ data: { assinaturaId: ass.id, valorCentavos: plano.precoCentavos, formaPagamento: "PIX", pagoEm: criarDataHora(somarDias(hoje, -20 - i * 5), "10:00") } });
     }
@@ -192,6 +196,7 @@ async function main() {
     }
     console.log(`✅ ${demo.nome}: login ${demo.email} / 123456 · link /b/${demo.slug}`);
   }
+  await db.configSistema.upsert({ where: { id: "geral" }, update: { whatsappSuporte: "41999998888" }, create: { id: "geral", whatsappSuporte: "41999998888" } });
   console.log("✅ Barbeiro: carlos@navalha.com / 123456");
   console.log("✅ Cliente (área do cliente): WhatsApp 11987654321 / 123456");
 }

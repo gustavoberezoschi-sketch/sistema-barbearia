@@ -43,7 +43,7 @@ export async function dadosDoAgendamento(slug: string) {
     },
   });
   if (!b) return null;
-  const filiais = b.filiais
+  const filiais = (b.suspensa ? [] : b.filiais)
     .map((f) => ({ id: f.id, nome: f.nome, endereco: f.endereco, dias: diasAbertos(f.horarios, b.antecedenciaDias) }))
     .filter((f) => f.dias.length > 0 && b.barbeiros.some((x) => x.filialId === f.id));
   return {

@@ -105,6 +105,9 @@ export default async function PaginaPublica({ params }: Props) {
       </header>
 
       <div className="mx-auto max-w-3xl space-y-10 px-4 pt-6">
+        {b.suspensa && (
+          <p className="rounded-2xl bg-white p-5 text-center text-couro-700 shadow-sm">O agendamento online está indisponível no momento. Fale com a barbearia pelo WhatsApp.</p>
+        )}
         {b.banners.length > 0 && <Carrossel banners={b.banners} />}
 
         {b.barbeiros.length > 0 && (
@@ -222,7 +225,7 @@ export default async function PaginaPublica({ params }: Props) {
         Agendamento online por <span className="font-semibold">Klareza<span className="text-latao-600">Barber</span></span>
       </p>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/[0.06] bg-white/95 p-3 backdrop-blur">
+      <div className={`fixed inset-x-0 bottom-0 z-20 border-t border-black/[0.06] bg-white/95 p-3 backdrop-blur ${b.suspensa ? "hidden" : ""}`}>
         <div className="mx-auto max-w-3xl">
           <Link href={`/b/${slug}/agendar`} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--cor)] py-3.5 font-bold text-[var(--cor-texto)] shadow-sm">
             <CalendarCheck className="size-5" /> Agendar horário

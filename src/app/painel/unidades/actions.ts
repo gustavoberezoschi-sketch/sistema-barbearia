@@ -6,6 +6,7 @@ import { exigirGestor, exigirSessao } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { escolherFilial } from "@/lib/filial";
 import { somenteDigitos } from "@/lib/formato";
+import { LimiteDoPlano, garantirVagaDeUnidade } from "@/lib/planosSistema";
 import type { Resultado } from "../actions";
 
 const texto = (form: FormData, campo: string) => String(form.get(campo) ?? "").trim();
@@ -46,6 +47,12 @@ export async function salvarFilial(_: Resultado, form: FormData): Promise<Result
       db.horarioFuncionamento.createMany({ data: horarios.map((h) => ({ ...h, filialId: id })) }),
     ]);
   } else {
+    try {
+      await garantirVagaDeUnidade(barbeariaId);
+    } catch (e) {
+      if (e instanceof LimiteDoPlano) return { erro: e.message };
+      throw e;
+    }
     const total = await db.filial.count({ where: { barbeariaId } });
     const nova = await db.filial.create({ data: { ...dados, barbeariaId, ordem: total, horarios: { create: horarios } } });
     // Produtos entram na unidade nova zerados, com o mesmo estoque mínimo da unidade principal.
@@ -60,12 +67,22 @@ export async function salvarFilial(_: Resultado, form: FormData): Promise<Result
   redirect("/painel/unidades");
 }
 
-export async function alternarFilial(form: FormData) {
+export async function alternarFilial(_: Resultado, form: FormData): Promise<Resultado> {
   const { barbeariaId } = await exigirGestor();
   const f = await db.filial.findFirst({ where: { id: texto(form, "id"), barbeariaId } });
-  if (!f) return;
-  if (f.ativo && (await db.filial.count({ where: { barbeariaId, ativo: true } })) <= 1) return; // sempre fica uma ativa
+  if (!f) return { erro: "Unidade não encontrada." };
+  if (!f.ativo) {
+    try {
+      await garantirVagaDeUnidade(barbeariaId);
+    } catch (e) {
+      if (e instanceof LimiteDoPlano) return { erro: e.message };
+      throw e;
+    }
+  }
+  if (f.ativo && (await db.filial.count({ where: { barbeariaId, ativo: true } })) <= 1)
+    return { erro: "A barbearia precisa de pelo menos uma unidade ativa." };
   await db.filial.update({ where: { id: f.id }, data: { ativo: !f.ativo } });
   revalidatePath("/painel", "layout");
   revalidatePath("/b", "layout");
+  return { ok: f.ativo ? "Unidade desativada." : "Unidade reativada." };
 }
