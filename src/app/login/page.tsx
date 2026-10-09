@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useActionState } from "react";
-import { Scissors } from "lucide-react";
+import { Marca } from "@/components/Marca";
 import { entrar } from "./actions";
 
 export default function Login() {
@@ -18,6 +18,7 @@ export default function Login() {
     <main className="grid min-h-screen lg:grid-cols-2">
       <div className="relative hidden overflow-hidden bg-couro-900 lg:block">
         <div className="poste absolute top-0 bottom-0 left-16 w-3 opacity-90" aria-hidden />
+        <div className="absolute top-12 left-28"><Marca tamanho="md" clara /></div>
         <div className="absolute right-12 bottom-12 left-28 text-white">
           <p className="font-display text-4xl leading-tight font-bold">A agenda, o caixa e os clientes da barbearia num lugar só.</p>
           <p className="mt-4 text-couro-300">Agendamento online, comandas, comissões, estoque e clube de assinatura.</p>
@@ -25,9 +26,7 @@ export default function Login() {
       </div>
       <div className="flex items-center justify-center p-6">
         <form onSubmit={enviar} className="w-full max-w-sm">
-          <span className="mb-6 grid size-12 place-items-center rounded-2xl bg-couro-900 text-latao-500">
-            <Scissors className="size-6" />
-          </span>
+          <div className="mb-8"><Marca tamanho="md" /></div>
           <h1 className="titulo">Entrar no painel</h1>
           <p className="mt-1 mb-8 text-sm text-couro-400">Use o e-mail e a senha que a barbearia recebeu.</p>
           <div className="space-y-4">

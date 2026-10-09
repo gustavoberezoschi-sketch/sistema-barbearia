@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Scissors } from "lucide-react";
+import { Marca } from "@/components/Marca";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ export default async function Inicio() {
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-8 p-6">
       <div>
-        <span className="mb-5 grid size-12 place-items-center rounded-2xl bg-couro-900 text-latao-500"><Scissors className="size-6" /></span>
+        <div className="mb-8"><Marca tamanho="lg" /></div>
         <h1 className="titulo">Agende seu horário</h1>
         <p className="mt-1 text-couro-400">Escolha a barbearia.</p>
       </div>

@@ -165,7 +165,12 @@ export function Menu({
 
       <form action={sair} className="border-t border-white/[0.06] p-3">
         <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2">
-          <p className="truncate text-sm text-couro-300">{usuario}</p>
+          <p className="min-w-0 truncate text-sm text-couro-300">
+            {usuario}
+            <span className="block text-[10px] font-semibold tracking-[0.12em] text-couro-400 uppercase">
+              Klareza<span className="text-latao-500">Barber</span>
+            </span>
+          </p>
           <button className="rounded-lg p-1.5 text-couro-400 hover:bg-white/[0.06] hover:text-white" title="Sair" aria-label="Sair">
             <LogOut className="size-4" />
           </button>

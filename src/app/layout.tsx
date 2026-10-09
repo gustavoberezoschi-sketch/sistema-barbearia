@@ -6,8 +6,9 @@ const titulo = Bricolage_Grotesque({ subsets: ["latin"], variable: "--fonte-titu
 const texto = Figtree({ subsets: ["latin"], variable: "--fonte-texto", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "Sistema Barbearia", template: "%s · Sistema Barbearia" },
-  description: "Agendamento online e gestão completa para barbearias",
+  title: { default: "KlarezaBarber", template: "%s · KlarezaBarber" },
+  description: "KlarezaBarber: agendamento online e gestão completa para barbearias",
+  applicationName: "KlarezaBarber",
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#1f1a17" };

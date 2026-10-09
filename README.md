@@ -1,4 +1,4 @@
-# ✂️ Sistema Barbearia
+# ✂️ KlarezaBarber
 
 Sistema de agendamento online e gestão para barbearias (no estilo CashBarber).
 É **multi-barbearia**: um único sistema atende várias barbearias, cada uma com

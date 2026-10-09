@@ -218,6 +218,10 @@ export default async function PaginaPublica({ params }: Props) {
         </section>
       </div>
 
+      <p className="mt-12 text-center text-xs text-couro-400">
+        Agendamento online por <span className="font-semibold">Klareza<span className="text-latao-600">Barber</span></span>
+      </p>
+
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/[0.06] bg-white/95 p-3 backdrop-blur">
         <div className="mx-auto max-w-3xl">
           <Link href={`/b/${slug}/agendar`} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--cor)] py-3.5 font-bold text-[var(--cor-texto)] shadow-sm">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FormAcao } from "@/components/FormAcao";
+import { Marca } from "@/components/Marca";
 import { db } from "@/lib/db";
 import { eAdmin, entrarAdmin, novaBarbearia, sairAdmin, trocarSenha } from "./actions";
 
@@ -11,7 +12,8 @@ export default async function Admin() {
   if (!(await eAdmin())) {
     return (
       <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center p-6">
-        <h1 className="mb-6 text-center text-2xl font-bold">🔐 Administração do sistema</h1>
+        <div className="mb-4 flex justify-center"><Marca tamanho="md" /></div>
+        <h1 className="mb-6 text-center text-xl font-bold">Administração</h1>
         <FormAcao acao={entrarAdmin} className="card space-y-4">
           <div>
             <label className="label" htmlFor="senha">Senha de administrador</label>
@@ -34,7 +36,10 @@ export default async function Admin() {
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="titulo">🔐 Barbearias clientes</h1>
+        <div>
+          <Marca tamanho="sm" />
+          <h1 className="titulo mt-2">Barbearias clientes</h1>
+        </div>
         <form action={sairAdmin}>
           <button className="btn-secundario">Sair</button>
         </form>
