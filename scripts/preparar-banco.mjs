@@ -2,6 +2,10 @@
 // erros comuns de digitação e cria/atualiza as tabelas do banco.
 // Se algo estiver errado, explica em português o que ajustar.
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+
+// Na Vercel as variáveis já vêm prontas; no computador, lê o arquivo .env.
+if (existsSync(".env")) process.loadEnvFile(".env");
 
 function limpar(valor) {
   if (!valor) return valor;
