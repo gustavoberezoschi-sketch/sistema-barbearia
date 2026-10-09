@@ -66,17 +66,26 @@ export async function abrirComanda(params: {
 }) {
   return db.$transaction(async (tx) => {
     let { clienteId = null, barbeiroId = null } = params;
-    let servicoId: string | null = null;
+    let servicos: { servicoId: string; barbeiroId: string }[] = [];
 
     if (params.agendamentoId) {
-      const existente = await tx.comanda.findUnique({ where: { agendamentoId: params.agendamentoId } });
-      if (existente) return existente;
       const ag = await tx.agendamento.findFirstOrThrow({
         where: { id: params.agendamentoId, barbeariaId: params.barbeariaId },
       });
+      // Vários serviços agendados juntos (grupo) viram uma comanda só.
+      const existente = await tx.comanda.findFirst({
+        where: {
+          status: { not: "CANCELADA" },
+          ...(ag.grupo ? { agendamento: { grupo: ag.grupo } } : { agendamentoId: ag.id }),
+        },
+      });
+      if (existente) return existente;
+      const doGrupo = ag.grupo
+        ? await tx.agendamento.findMany({ where: { grupo: ag.grupo, status: { not: "CANCELADO" } }, orderBy: { inicio: "asc" } })
+        : [ag];
       clienteId = ag.clienteId;
       barbeiroId = ag.barbeiroId;
-      servicoId = ag.servicoId;
+      servicos = doGrupo.map((a) => ({ servicoId: a.servicoId, barbeiroId: a.barbeiroId }));
     }
 
     const caixa = await tx.caixa.findFirst({ where: { barbeariaId: params.barbeariaId, fechadoEm: null } });
@@ -89,7 +98,7 @@ export async function abrirComanda(params: {
         caixaId: caixa?.id ?? null,
       },
     });
-    if (servicoId) await montarItemServico(tx, comanda.id, servicoId, barbeiroId, clienteId);
+    for (const item of servicos) await montarItemServico(tx, comanda.id, item.servicoId, item.barbeiroId, clienteId);
     return comanda;
   });
 }
@@ -148,6 +157,12 @@ export async function removerItem(barbeariaId: string, itemId: string) {
   });
 }
 
+/** O agendamento da comanda e os outros do mesmo grupo (vários serviços agendados juntos). */
+async function filtroDoAtendimento(tx: Tx, agendamentoId: string) {
+  const ag = await tx.agendamento.findUniqueOrThrow({ where: { id: agendamentoId }, select: { id: true, grupo: true } });
+  return ag.grupo ? { grupo: ag.grupo, status: { not: "CANCELADO" } } : { id: ag.id };
+}
+
 export function subtotalDosItens(itens: { quantidade: number; precoUnitCentavos: number; cobertoPorPlano: boolean }[]) {
   return itens.reduce((s, i) => s + (i.cobertoPorPlano ? 0 : i.quantidade * i.precoUnitCentavos), 0);
 }
@@ -188,8 +203,8 @@ export async function fecharComanda(
       });
     }
     if (comanda.agendamentoId) {
-      await tx.agendamento.update({
-        where: { id: comanda.agendamentoId },
+      await tx.agendamento.updateMany({
+        where: await filtroDoAtendimento(tx, comanda.agendamentoId),
         data: { status: "CONCLUIDO", formaPagamento: total > 0 ? opcoes.formaPagamento : null },
       });
     }
@@ -232,7 +247,10 @@ export async function cancelarComanda(barbeariaId: string, comandaId: string) {
       }
     }
     if (comanda.agendamentoId) {
-      await tx.agendamento.update({ where: { id: comanda.agendamentoId }, data: { status: "AGENDADO", formaPagamento: null } });
+      await tx.agendamento.updateMany({
+        where: await filtroDoAtendimento(tx, comanda.agendamentoId),
+        data: { status: "AGENDADO", formaPagamento: null },
+      });
     }
     await tx.comanda.update({ where: { id: comandaId }, data: { status: "CANCELADA", agendamentoId: null } });
   });

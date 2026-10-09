@@ -38,6 +38,11 @@ export default async function Barbeiro({ params }: { params: Promise<{ id: strin
             <FotoUpload nome="foto" inicial={b?.foto} formato="redondo" rotulo="Foto (aparece para o cliente)" tamanho={240} />
             <div><label className="label" htmlFor="nome">Nome</label><input id="nome" name="nome" defaultValue={b?.nome} className="input" required /></div>
             <div><label className="label" htmlFor="telefone">WhatsApp</label><input id="telefone" name="telefone" defaultValue={b?.telefone ? formatarTelefone(b.telefone) : ""} className="input" inputMode="tel" /></div>
+            <div><label className="label" htmlFor="bio">Apresentação curta</label><input id="bio" name="bio" defaultValue={b?.bio ?? ""} className="input" placeholder="Ex.: especialista em degradê e barba" /></div>
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" name="destaque" defaultChecked={b?.destaque} className="mt-0.5" />
+              <span><span className="font-medium">Destaque</span><span className="block text-xs text-couro-400">Mostra o selo "Destaque" e coloca primeiro na lista do cliente.</span></span>
+            </label>
           </div>
         </Secao>
         <div className="space-y-4">

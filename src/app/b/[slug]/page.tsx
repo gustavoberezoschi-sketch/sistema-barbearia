@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { Clock, Crown, Instagram, MapPin, MessageCircle } from "lucide-react";
-import { Avatar } from "@/components/ui";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { CalendarCheck, Clock, Crown, Instagram, MapPin, MessageCircle, Star, UserRound } from "lucide-react";
+import { Carrossel } from "@/components/Carrossel";
+import { clienteLogado } from "@/lib/clienteAuth";
 import { db } from "@/lib/db";
 import { corDoTexto, formatarDinheiro, linkWhatsApp } from "@/lib/formato";
-import { NOMES_DIAS, diaDaSemana, diaLocal, horaLocal, somarDias } from "@/lib/tempo";
-import { Agendar } from "./Agendar";
+import { estiloDaMarca } from "@/lib/publico";
+import { NOMES_DIAS, diaDaSemana, diaLocal, horaLocal } from "@/lib/tempo";
 
 export const dynamic = "force-dynamic";
 
@@ -19,29 +21,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PaginaPublica({ params }: Props) {
+  const { slug } = await params;
+  if (await clienteLogado(slug)) redirect(`/b/${slug}/conta`);
   const b = await db.barbearia.findUnique({
-    where: { slug: (await params).slug },
+    where: { slug },
     include: {
       horarios: { orderBy: { diaSemana: "asc" } },
-      servicos: { where: { ativo: true, exibirOnline: true }, include: { barbeiros: { select: { id: true } } }, orderBy: [{ categoria: "asc" }, { precoCentavos: "asc" }] },
-      barbeiros: { where: { ativo: true }, orderBy: { nome: "asc" } },
+      servicos: { where: { ativo: true, exibirOnline: true }, orderBy: [{ categoria: "asc" }, { precoCentavos: "asc" }] },
+      barbeiros: { where: { ativo: true }, orderBy: [{ destaque: "desc" }, { nome: "asc" }] },
       planos: { where: { ativo: true, exibirOnline: true }, include: { servicos: { select: { nome: true } } }, orderBy: { precoCentavos: "asc" } },
+      banners: { orderBy: { ordem: "asc" } },
     },
   });
   if (!b) notFound();
 
   const hoje = diaLocal();
-  const abertos = new Set(b.horarios.map((h) => h.diaSemana));
-  const dias = Array.from({ length: b.antecedenciaDias + 1 }, (_, i) => somarDias(hoje, i)).filter((d) => abertos.has(diaDaSemana(d)));
   const hojeHorario = b.horarios.find((h) => h.diaSemana === diaDaSemana(hoje));
   const agora = horaLocal(new Date());
   const abertoAgora = !!hojeHorario && agora >= hojeHorario.abre && agora < hojeHorario.fecha;
   const cor = b.corDestaque;
-  const estilo = { "--cor": cor, "--cor-texto": corDoTexto(cor) } as React.CSSProperties;
+  const categorias = [...new Set(b.servicos.map((s) => s.categoria))];
 
   return (
-    <main className="min-h-screen bg-[#f6f5f3] pb-24" style={estilo}>
-      {/* Capa */}
+    <main className="min-h-screen bg-[#f6f5f3] pb-28" style={estiloDaMarca(cor)}>
       <header className="relative">
         <div className="relative h-44 w-full overflow-hidden bg-couro-900 sm:h-60">
           {b.capa ? (
@@ -51,6 +53,9 @@ export default async function PaginaPublica({ params }: Props) {
             <div className="size-full" style={{ backgroundImage: `repeating-linear-gradient(-45deg, ${cor}22 0 18px, transparent 18px 36px)` }} />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-couro-950/70 via-couro-950/10 to-transparent" />
+          <Link href={`/b/${slug}/entrar`} className="absolute top-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3.5 py-2 text-sm font-semibold backdrop-blur hover:bg-white">
+            <UserRound className="size-4" /> Entrar
+          </Link>
         </div>
         <div className="mx-auto -mt-14 max-w-3xl px-4">
           <div className="relative rounded-3xl bg-white p-5 shadow-[0_10px_40px_-12px_rgba(20,16,14,0.25)] sm:p-6">
@@ -93,27 +98,60 @@ export default async function PaginaPublica({ params }: Props) {
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl space-y-10 px-4 pt-8">
-        {b.servicos.length === 0 || b.barbeiros.length === 0 || dias.length === 0 ? (
-          <p className="rounded-2xl bg-white p-6 text-center text-couro-700">O agendamento online ainda não está disponível. Fale com a gente pelo WhatsApp.</p>
-        ) : (
-          <Agendar
-            slug={b.slug}
-            nomeBarbearia={b.nome}
-            telefoneBarbearia={b.telefone}
-            servicos={b.servicos.map((s) => ({
-              id: s.id,
-              nome: s.nome,
-              categoria: s.categoria,
-              descricao: s.descricao,
-              foto: s.foto,
-              precoCentavos: s.precoCentavos,
-              duracaoMin: s.duracaoMin,
-              barbeiroIds: s.barbeiros.map((x) => x.id),
-            }))}
-            barbeiros={b.barbeiros.map((x) => ({ id: x.id, nome: x.nome, foto: x.foto }))}
-            dias={dias}
-          />
+      <div className="mx-auto max-w-3xl space-y-10 px-4 pt-6">
+        {b.banners.length > 0 && <Carrossel banners={b.banners} />}
+
+        {b.barbeiros.length > 0 && (
+          <section>
+            <h2 className="mb-4 font-display text-xl font-bold">Profissionais</h2>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+              {b.barbeiros.map((x) => (
+                <div key={x.id} className="text-center">
+                  <div className="relative aspect-square overflow-hidden rounded-2xl bg-fundo">
+                    {x.foto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={x.foto} alt="" className="size-full object-cover" />
+                    ) : (
+                      <span className="grid size-full place-items-center text-couro-300"><UserRound className="size-10" /></span>
+                    )}
+                    {x.destaque && (
+                      <span className="absolute right-0 bottom-0 flex items-center gap-1 rounded-tl-lg bg-poste-azul px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                        <Star className="size-3 fill-current" /> Destaque
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1.5 text-sm leading-tight font-semibold">{x.nome}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {b.servicos.length > 0 && (
+          <section>
+            <h2 className="mb-4 font-display text-xl font-bold">Serviços</h2>
+            {categorias.map((cat) => (
+              <div key={cat} className="mb-4">
+                {categorias.length > 1 && <p className="rotulo mb-2">{cat}</p>}
+                <ul className="divide-y divide-black/[0.05] overflow-hidden rounded-2xl bg-white shadow-sm">
+                  {b.servicos.filter((s) => s.categoria === cat).map((s) => (
+                    <li key={s.id} className="flex items-center gap-3 p-3">
+                      {s.foto && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={s.foto} alt="" className="size-14 shrink-0 rounded-xl object-cover" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold">{s.nome}</p>
+                        {s.descricao && <p className="line-clamp-2 text-sm text-couro-400">{s.descricao}</p>}
+                        <p className="mt-0.5 flex items-center gap-1 text-xs text-couro-400"><Clock className="size-3" /> {s.duracaoMin} min</p>
+                      </div>
+                      <p className="numero shrink-0">{formatarDinheiro(s.precoCentavos)}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </section>
         )}
 
         {b.planos.length > 0 && (
@@ -128,7 +166,7 @@ export default async function PaginaPublica({ params }: Props) {
                   <p className="mt-2 text-sm text-couro-700">{p.descricao ?? p.servicos.map((s) => s.nome).join(", ")}</p>
                   <p className="mt-1 text-xs text-couro-400">{p.usosPorMes ? `Até ${p.usosPorMes} vez(es) por mês` : "Uso ilimitado"}</p>
                   {b.telefone && (
-                    <a href={linkWhatsApp(b.telefone, `Olá! Quero assinar o plano ${p.nome} da ${b.nome}.`)} target="_blank" className="mt-4 inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold" style={{ background: cor, color: corDoTexto(cor) }}>
+                    <a href={linkWhatsApp(b.telefone, `Olá! Quero assinar o plano ${p.nome} da ${b.nome}.`)} target="_blank" className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[var(--cor)] px-4 py-2.5 text-sm font-semibold text-[var(--cor-texto)]">
                       Quero assinar
                     </a>
                   )}
@@ -138,30 +176,28 @@ export default async function PaginaPublica({ params }: Props) {
           </section>
         )}
 
-        <section className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <h2 className="mb-3 font-display text-xl font-bold">Equipe</h2>
-            <ul className="space-y-3">
-              {b.barbeiros.map((x) => (
-                <li key={x.id} className="flex items-center gap-3"><Avatar nome={x.nome} foto={x.foto} tamanho={44} /><span className="font-medium">{x.nome}</span></li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h2 className="mb-3 flex items-center gap-2 font-display text-xl font-bold"><Clock className="size-5" /> Horários</h2>
-            <ul className="space-y-1.5 text-sm">
-              {NOMES_DIAS.map((nome, d) => {
-                const h = b.horarios.find((x) => x.diaSemana === d);
-                return (
-                  <li key={d} className={`flex justify-between ${d === diaDaSemana(hoje) ? "font-semibold" : ""}`}>
-                    <span>{nome}</span>
-                    <span className="tabular-nums text-couro-700">{h ? `${h.abre} às ${h.fecha}` : "Fechado"}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+        <section>
+          <h2 className="mb-3 flex items-center gap-2 font-display text-xl font-bold"><Clock className="size-5" /> Horários</h2>
+          <ul className="space-y-1.5 rounded-2xl bg-white p-4 text-sm shadow-sm">
+            {NOMES_DIAS.map((nome, d) => {
+              const h = b.horarios.find((x) => x.diaSemana === d);
+              return (
+                <li key={d} className={`flex justify-between ${d === diaDaSemana(hoje) ? "font-semibold" : ""}`}>
+                  <span>{nome}</span>
+                  <span className="tabular-nums text-couro-700">{h ? `${h.abre} às ${h.fecha}` : "Fechado"}</span>
+                </li>
+              );
+            })}
+          </ul>
         </section>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/[0.06] bg-white/95 p-3 backdrop-blur">
+        <div className="mx-auto max-w-3xl">
+          <Link href={`/b/${slug}/agendar`} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--cor)] py-3.5 font-bold text-[var(--cor-texto)] shadow-sm">
+            <CalendarCheck className="size-5" /> Agendar horário
+          </Link>
+        </div>
       </div>
     </main>
   );

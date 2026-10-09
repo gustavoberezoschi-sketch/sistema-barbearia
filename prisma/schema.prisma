@@ -39,6 +39,8 @@ model Barbearia {
   planos       Plano[]
   assinaturas  Assinatura[]
   contas       ContaPagar[]
+  banners      Banner[]
+  parceiros    Parceiro[]
 }
 
 model HorarioFuncionamento {
@@ -75,6 +77,8 @@ model Barbeiro {
   foto               String?
   comissaoPct        Int       @default(50) // comissão padrão nos serviços
   comissaoProdutoPct Int       @default(10) // comissão nas vendas de produtos
+  destaque           Boolean   @default(false) // selo "Destaque" na página do cliente
+  bio                String?
   ativo              Boolean   @default(true)
   criadoEm           DateTime  @default(now())
 
@@ -118,6 +122,7 @@ model Cliente {
   nascimento             String? // "1990-05-21"
   observacao             String?
   saldoCashbackCentavos  Int       @default(0)
+  senhaHash              String? // acesso à área do cliente
   criadoEm               DateTime  @default(now())
 
   agendamentos Agendamento[]
@@ -145,12 +150,14 @@ model Agendamento {
   formaPagamento String?
   observacao     String?
   token          String    @unique @default(cuid()) // link para o cliente ver/cancelar
+  grupo          String? // agendamentos de vários serviços em sequência compartilham o grupo
   criadoEm       DateTime  @default(now())
 
   comanda Comanda?
 
   @@index([barbeariaId, inicio])
   @@index([barbeiroId, inicio])
+  @@index([grupo])
 }
 
 // Folgas, almoço, férias: horários em que não se pode agendar.
@@ -324,4 +331,29 @@ model ContaPagar {
   criadoEm       DateTime  @default(now())
 
   @@index([barbeariaId, vencimento])
+}
+
+// Banners da área do cliente (promoções, avisos, parceiros).
+model Banner {
+  id          String    @id @default(cuid())
+  barbeariaId String
+  barbearia   Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  imagem      String
+  link        String?
+  ordem       Int       @default(0)
+  criadoEm    DateTime  @default(now())
+}
+
+// Clube de vantagens: parceiros com cupons de desconto para os clientes.
+model Parceiro {
+  id          String    @id @default(cuid())
+  barbeariaId String
+  barbearia   Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  nome        String
+  descricao   String?
+  cupom       String?
+  imagem      String?
+  link        String?
+  ativo       Boolean   @default(true)
+  criadoEm    DateTime  @default(now())
 }

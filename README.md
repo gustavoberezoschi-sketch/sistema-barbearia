@@ -4,9 +4,9 @@ Sistema de agendamento online e gestão para barbearias (no estilo CashBarber).
 É **multi-barbearia**: um único sistema atende várias barbearias, cada uma com
 o próprio login, os próprios dados e o próprio link de agendamento.
 
-| Início | Agenda | Comanda | Página do cliente |
+| Início | Agenda | Comanda | Área do cliente |
 | --- | --- | --- | --- |
-| ![](docs/telas/inicio.png) | ![](docs/telas/agenda.png) | ![](docs/telas/comanda.png) | ![](docs/telas/agendamento-cliente.png) |
+| ![](docs/telas/inicio.png) | ![](docs/telas/agenda.png) | ![](docs/telas/comanda.png) | ![](docs/telas/area-do-cliente.png) |
 
 ## Funções
 
@@ -33,11 +33,13 @@ o próprio login, os próprios dados e o próprio link de agendamento.
 - **Relatórios:** faturamento por dia, comissões por barbeiro, serviços e produtos mais vendidos, formas de pagamento, % de agendamento online e de faltas
 - **Configurações:** logo, foto de capa, cor da marca, apresentação, Instagram, horários, intervalo, antecedência, prazo de cancelamento e cashback
 
-**Página do cliente** (`/b/<barbearia>`)
-- Capa, logo, endereço com mapa, WhatsApp, Instagram, horários e equipe
-- Serviços com foto e descrição, escolha do barbeiro (só quem faz o serviço), dia e horário livres
-- Depois de agendar: salvar na agenda do celular e link para ver ou cancelar o horário
-- Planos do clube de assinatura com botão "Quero assinar"
+**Página e área do cliente** (`/b/<barbearia>`)
+- Página da barbearia: capa, logo, banners, profissionais (com selo de destaque), serviços, planos, horários, mapa, WhatsApp e Instagram
+- Agendamento em etapas: profissional → serviços (pode escolher vários de uma vez) → horário, com o total e a duração no rodapé
+- **Área do cliente** com login (WhatsApp + senha): início com banners, "Seu plano", clube de vantagens e próximos agendamentos; agendamentos (agendados e anteriores); plano; perfil
+- Assinante vê os serviços do plano como "No seu plano" (R$ 0,00)
+- **Clube de vantagens:** parceiros com cupons de desconto, gerenciados no painel em "Página do cliente"
+- Salvar o horário na agenda do celular e cancelar pelo site (respeitando o prazo da barbearia)
 
 ## Tecnologias
 
@@ -118,6 +120,7 @@ npm run dev
 
 Abra http://localhost:3000. Logins da demonstração (senha `123456`):
 `dono@navalha.com` (`/b/navalha-de-ouro`), `dono@corteforte.com` (`/b/corte-forte`) e o barbeiro `carlos@navalha.com`.
+Área do cliente: `/b/navalha-de-ouro/entrar` com o WhatsApp `11987654321` e a senha `123456`.
 
 Também dá para cadastrar barbearias pelo terminal com `npm run criar-barbearia`.
 

@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { NOME_FORMA, formatarDinheiro, formatarTelefone, linkWhatsApp } from "@/lib/formato";
 import { enderecoDoSite } from "@/lib/site";
 import { diaLocal, formatarDataHora, formatarDia } from "@/lib/tempo";
-import { salvarCliente } from "../../actions";
+import { definirSenhaDoApp, salvarCliente } from "../../actions";
 import { novaComanda } from "../../comandas/actions";
 
 export const metadata: Metadata = { title: "Cliente" };
@@ -124,6 +124,16 @@ export default async function Cliente({ params }: { params: Promise<{ id: string
         <div className="space-y-4">
           <Secao titulo="Dados do cliente">
             <FormCampos c={c} />
+          </Secao>
+          <Secao titulo="Acesso à área do cliente">
+            <p className="mb-3 text-sm text-couro-400">
+              {c.senhaHash ? "O cliente já tem conta. Se ele esqueceu a senha, defina uma nova:" : "O cliente ainda não criou conta. Você pode criar uma senha para ele:"}
+            </p>
+            <FormAcao acao={definirSenhaDoApp} limparAoSalvar className="grid grid-cols-[1fr_auto] gap-2">
+              <input type="hidden" name="id" value={c.id} />
+              <input name="senha" className="input" placeholder="Nova senha" minLength={6} required aria-label="Nova senha do cliente" />
+              <button className="btn-secundario">Definir</button>
+            </FormAcao>
           </Secao>
           <Secao titulo="Clube de assinatura">
             {ativa ? (

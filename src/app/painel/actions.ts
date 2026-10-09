@@ -89,6 +89,8 @@ export async function salvarBarbeiro(_: Resultado, form: FormData): Promise<Resu
     foto: imagem(form, "foto"),
     comissaoPct,
     comissaoProdutoPct,
+    destaque: form.get("destaque") === "on",
+    bio: texto(form, "bio") || null,
   };
 
   let barbeiroId = id;
@@ -230,4 +232,14 @@ export async function alterarMinhaSenha(_: Resultado, form: FormData): Promise<R
   if (nova.length < 6) return { erro: "A nova senha precisa ter pelo menos 6 caracteres." };
   await db.usuario.update({ where: { id: usuarioId }, data: { senhaHash: await bcrypt.hash(nova, 10) } });
   return { ok: "Senha alterada." };
+}
+
+export async function definirSenhaDoApp(_: Resultado, form: FormData): Promise<Resultado> {
+  const { barbeariaId } = await exigirGestor();
+  const senha = texto(form, "senha");
+  if (senha.length < 6) return { erro: "A senha precisa ter pelo menos 6 caracteres." };
+  const r = await db.cliente.updateMany({ where: { id: texto(form, "id"), barbeariaId }, data: { senhaHash: await bcrypt.hash(senha, 10) } });
+  if (r.count === 0) return { erro: "Cliente não encontrado." };
+  revalidatePath("/painel", "layout");
+  return { ok: `Senha definida. Envie para o cliente: ele entra com o WhatsApp e essa senha.` };
 }

@@ -9,49 +9,50 @@ export const STATUS_OCUPADOS = ["AGENDADO", "CONFIRMADO", "CONCLUIDO"];
 
 export type Horario = { hora: string; barbeiroIds: string[] };
 
-/** Barbeiros ativos que fazem o serviço (serviço sem barbeiros definidos = todos fazem). */
-export async function barbeirosDoServico(
+/**
+ * Serviços escolhidos e barbeiros ativos que fazem TODOS eles
+ * (serviço sem barbeiros definidos = todos fazem).
+ */
+export async function barbeirosQueFazem(
   barbeariaId: string,
-  servicoId: string,
+  servicoIds: string[],
   tx: Cliente = db,
   barbeiroId?: string | null,
 ) {
-  const servico = await tx.servico.findFirst({
-    where: { id: servicoId, barbeariaId, ativo: true },
+  const servicos = await tx.servico.findMany({
+    where: { id: { in: servicoIds }, barbeariaId, ativo: true },
     include: { barbeiros: { select: { id: true } } },
   });
-  if (!servico) return { servico: null, barbeiros: [] };
-  const restritos = servico.barbeiros.map((b) => b.id);
-  const barbeiros = await tx.barbeiro.findMany({
-    where: {
-      barbeariaId,
-      ativo: true,
-      ...(barbeiroId ? { id: barbeiroId } : {}),
-      ...(restritos.length ? { id: barbeiroId ? { in: restritos.filter((r) => r === barbeiroId) } : { in: restritos } } : {}),
-    },
+  if (servicos.length === 0 || servicos.length !== new Set(servicoIds).size) return { servicos: [], barbeiros: [] };
+  const todos = await tx.barbeiro.findMany({
+    where: { barbeariaId, ativo: true, ...(barbeiroId ? { id: barbeiroId } : {}) },
     orderBy: { nome: "asc" },
   });
-  return { servico, barbeiros };
+  const barbeiros = todos.filter((b) => servicos.every((s) => s.barbeiros.length === 0 || s.barbeiros.some((x) => x.id === b.id)));
+  // mantém a ordem escolhida pelo cliente
+  const ordenados = servicoIds.map((id) => servicos.find((s) => s.id === id)!);
+  return { servicos: ordenados, barbeiros };
 }
 
 /**
- * Lista os horários livres de um dia para um serviço.
- * Se barbeiroId for null, considera qualquer barbeiro que faça o serviço ("sem preferência").
+ * Lista os horários livres de um dia para um ou mais serviços feitos em sequência.
+ * Se barbeiroId for null, considera qualquer barbeiro que faça os serviços ("sem preferência").
  */
 export async function horariosDisponiveis(
-  params: { barbeariaId: string; servicoId: string; barbeiroId: string | null; dia: string },
+  params: { barbeariaId: string; servicoIds: string[]; barbeiroId: string | null; dia: string },
   tx: Cliente = db,
 ): Promise<Horario[]> {
-  const { barbeariaId, servicoId, barbeiroId, dia } = params;
+  const { barbeariaId, servicoIds, barbeiroId, dia } = params;
 
-  const [barbearia, funcionamento, { servico, barbeiros }] = await Promise.all([
+  const [barbearia, funcionamento, { servicos, barbeiros }] = await Promise.all([
     tx.barbearia.findUnique({ where: { id: barbeariaId } }),
     tx.horarioFuncionamento.findUnique({
       where: { barbeariaId_diaSemana: { barbeariaId, diaSemana: diaDaSemana(dia) } },
     }),
-    barbeirosDoServico(barbeariaId, servicoId, tx, barbeiroId),
+    barbeirosQueFazem(barbeariaId, servicoIds, tx, barbeiroId),
   ]);
-  if (!barbearia || !funcionamento || !servico || barbeiros.length === 0) return [];
+  if (!barbearia || !funcionamento || servicos.length === 0 || barbeiros.length === 0) return [];
+  const duracaoMin = servicos.reduce((s, x) => s + x.duracaoMin, 0);
 
   const abertura = criarDataHora(dia, funcionamento.abre);
   const fechamento = criarDataHora(dia, funcionamento.fecha);
@@ -73,15 +74,11 @@ export async function horariosDisponiveis(
   ]);
 
   const agora = Date.now();
-  const duracaoMs = servico.duracaoMin * 60_000;
+  const duracaoMs = duracaoMin * 60_000;
   const fimDoExpediente = horaParaMinutos(funcionamento.fecha);
   const horarios: Horario[] = [];
 
-  for (
-    let min = horaParaMinutos(funcionamento.abre);
-    min + servico.duracaoMin <= fimDoExpediente;
-    min += barbearia.intervaloMin
-  ) {
+  for (let min = horaParaMinutos(funcionamento.abre); min + duracaoMin <= fimDoExpediente; min += barbearia.intervaloMin) {
     const hora = minutosParaHora(min);
     const inicio = criarDataHora(dia, hora).getTime();
     if (inicio <= agora) continue;
@@ -154,37 +151,53 @@ export async function comTravaDaAgenda<T>(barbeariaId: string, fn: (tx: Prisma.T
   });
 }
 
-/** Agendamento feito pelo cliente na página pública. Revalida o horário dentro da transação. */
+/**
+ * Agendamento feito pelo cliente na página pública. Revalida o horário dentro da transação.
+ * Vários serviços viram agendamentos em sequência com o mesmo barbeiro, ligados pelo "grupo".
+ */
 export async function reservarOnline(params: {
   barbeariaId: string;
-  servicoId: string;
+  servicoIds: string[];
   barbeiroId: string | null;
   dia: string;
   hora: string;
-  nome: string;
-  telefone: string;
+  cliente: { id: string } | { nome: string; telefone: string };
 }) {
   return comTravaDaAgenda(params.barbeariaId, async (tx) => {
     const horarios = await horariosDisponiveis(params, tx);
     const escolhido = horarios.find((h) => h.hora === params.hora);
     if (!escolhido) throw new ErroAgendamento("Esse horário acabou de ser ocupado. Escolha outro.");
 
-    const servico = await tx.servico.findUniqueOrThrow({ where: { id: params.servicoId } });
-    const cliente = await obterOuCriarCliente(params.barbeariaId, params.nome, params.telefone, tx);
-    const inicio = criarDataHora(params.dia, params.hora);
+    const { servicos } = await barbeirosQueFazem(params.barbeariaId, params.servicoIds, tx);
+    const clienteId =
+      "id" in params.cliente
+        ? params.cliente.id
+        : (await obterOuCriarCliente(params.barbeariaId, params.cliente.nome, params.cliente.telefone, tx)).id;
+    const grupo = servicos.length > 1 ? crypto.randomUUID() : null;
+    const barbeiroId = escolhido.barbeiroIds[0];
 
-    return tx.agendamento.create({
-      data: {
-        barbeariaId: params.barbeariaId,
-        barbeiroId: escolhido.barbeiroIds[0],
-        servicoId: servico.id,
-        clienteId: cliente.id,
-        inicio,
-        fim: new Date(inicio.getTime() + servico.duracaoMin * 60_000),
-        precoCentavos: servico.precoCentavos,
-        origem: "ONLINE",
-      },
-      include: { barbeiro: true, servico: true },
-    });
+    let inicio = criarDataHora(params.dia, params.hora);
+    const criados = [];
+    for (const servico of servicos) {
+      const fim = new Date(inicio.getTime() + servico.duracaoMin * 60_000);
+      criados.push(
+        await tx.agendamento.create({
+          data: {
+            barbeariaId: params.barbeariaId,
+            barbeiroId,
+            servicoId: servico.id,
+            clienteId,
+            inicio,
+            fim,
+            precoCentavos: servico.precoCentavos,
+            origem: "ONLINE",
+            grupo,
+          },
+          include: { barbeiro: true, servico: true },
+        }),
+      );
+      inicio = fim;
+    }
+    return criados;
   });
 }

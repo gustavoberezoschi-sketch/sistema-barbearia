@@ -1,10 +1,16 @@
 // Dados de demonstração: duas barbearias com equipe, serviços, produtos, clube,
 // clientes e 3 semanas de movimento. Uso: npm run db:seed
 // Logins (senha 123456): dono@navalha.com · dono@corteforte.com · carlos@navalha.com (barbeiro)
+// Área do cliente: /b/navalha-de-ouro/entrar com WhatsApp 11987654321 e senha 123456
 import bcrypt from "bcryptjs";
 import { abrirComanda, adicionarProduto, fecharComanda } from "../src/lib/comandas";
 import { db } from "../src/lib/db";
 import { criarDataHora, diaDaSemana, diaLocal, somarDias, somarMeses } from "../src/lib/tempo";
+
+function bannerSvg(fundo: string, destaque: string, titulo: string, sub: string) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="500"><rect width="1300" height="500" fill="${fundo}"/><g opacity=".18">${Array.from({ length: 30 }, (_, i) => `<rect x="${i * 60 - 300}" y="-50" width="22" height="700" fill="${destaque}" transform="rotate(35 ${i * 60} 250)"/>`).join("")}</g><text x="80" y="230" font-family="Arial Black,Arial" font-weight="900" font-size="84" fill="#fff">${titulo}</text><text x="84" y="310" font-family="Arial" font-size="40" fill="${destaque}">${sub}</text></svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+}
 
 const DEMOS = [
   { nome: "Barbearia Navalha de Ouro", slug: "navalha-de-ouro", email: "dono@navalha.com", cor: "#c9a14a", barbeiros: ["Carlos Mendes", "Rafael Lima", "Diego Souza"] },
@@ -59,10 +65,22 @@ async function main() {
         cashbackPct: 5,
         horarios: { create: [1, 2, 3, 4, 5, 6].map((diaSemana) => ({ diaSemana, abre: "09:00", fecha: diaSemana === 6 ? "17:00" : "20:00" })) },
         usuarios: { create: { nome: "Roberto", email: demo.email, senhaHash } },
-        barbeiros: { create: demo.barbeiros.map((nome, i) => ({ nome, comissaoPct: i === 0 ? 50 : 45 })) },
+        barbeiros: { create: demo.barbeiros.map((nome, i) => ({ nome, comissaoPct: i === 0 ? 50 : 45, destaque: i < 2 })) },
+        banners: {
+          create: [
+            { imagem: bannerSvg("#1f1a17", demo.cor, "Corte + barba", "R$ 75 · toalha quente inclusa"), ordem: 0 },
+            { imagem: bannerSvg("#2b2420", demo.cor, "Clube do corte", "Cortes ilimitados por R$ 99,90/mês"), ordem: 1 },
+          ],
+        },
+        parceiros: {
+          create: [
+            { nome: "Stilo Cell", descricao: "15% de desconto em capinhas e películas", cupom: "BARBA15" },
+            { nome: "Academia Força Total", descricao: "Isenção da matrícula para clientes da barbearia", cupom: "CORTEFIT" },
+          ],
+        },
         servicos: { create: SERVICOS },
         produtos: { create: PRODUTOS },
-        clientes: { create: CLIENTES.map(([nome, telefone, nascimento]) => ({ nome, telefone, nascimento })) },
+        clientes: { create: CLIENTES.map(([nome, telefone, nascimento], i) => ({ nome, telefone, nascimento, senhaHash: i === 0 ? senhaHash : null })) },
       },
       include: { barbeiros: true, servicos: true, clientes: true, produtos: true },
     });
@@ -135,6 +153,7 @@ async function main() {
     console.log(`✅ ${demo.nome}: login ${demo.email} / 123456 · link /b/${demo.slug}`);
   }
   console.log("✅ Barbeiro: carlos@navalha.com / 123456");
+  console.log("✅ Cliente (área do cliente): WhatsApp 11987654321 / 123456");
 }
 
 main().finally(() => db.$disconnect());

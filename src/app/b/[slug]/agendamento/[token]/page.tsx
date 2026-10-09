@@ -24,6 +24,10 @@ export default async function MeuAgendamento({ params }: { params: Promise<{ slu
     include: { barbearia: true, servico: true, barbeiro: true, cliente: true },
   });
   if (!ag) notFound();
+  const grupo = ag.grupo
+    ? await db.agendamento.findMany({ where: { grupo: ag.grupo }, include: { servico: true }, orderBy: { inicio: "asc" } })
+    : [ag];
+  const total = grupo.reduce((s, x) => s + x.precoCentavos, 0);
   const cor = ag.barbearia.corDestaque;
   const ativo = ag.status === "AGENDADO" || ag.status === "CONFIRMADO";
   const podeCancelar = ativo && ag.inicio.getTime() - Date.now() >= ag.barbearia.cancelamentoHoras * 3600_000;
@@ -36,7 +40,7 @@ export default async function MeuAgendamento({ params }: { params: Promise<{ slu
         <div className="mt-5 rounded-2xl bg-fundo p-4">
           <p className="text-sm font-semibold" style={{ color: ativo ? undefined : "#c2412d" }}>{STATUS[ag.status]}</p>
           <p className="mt-1 text-lg font-semibold first-letter:uppercase">{formatarDiaExtenso(diaLocal(ag.inicio))}, às {horaLocal(ag.inicio)}</p>
-          <p className="text-couro-700">{ag.servico.nome} com {ag.barbeiro.nome} · {formatarDinheiro(ag.precoCentavos)}</p>
+          <p className="text-couro-700">{grupo.map((x) => x.servico.nome).join(" + ")} com {ag.barbeiro.nome} · {formatarDinheiro(total)}</p>
           {ag.barbearia.endereco && <p className="mt-2 text-sm text-couro-400">{ag.barbearia.endereco}</p>}
         </div>
         {podeCancelar && <Cancelar slug={slug} token={token} />}
@@ -49,7 +53,8 @@ export default async function MeuAgendamento({ params }: { params: Promise<{ slu
               Falar com a barbearia
             </a>
           )}
-          <Link href={`/b/${slug}`} className="btn-secundario">Fazer novo agendamento</Link>
+          <Link href={`/b/${slug}/agendar`} className="btn-secundario">Fazer novo agendamento</Link>
+          <Link href={`/b/${slug}/conta/agendamentos`} className="btn-secundario">Meus agendamentos</Link>
         </div>
       </div>
     </main>
