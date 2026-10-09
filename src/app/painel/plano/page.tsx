@@ -38,7 +38,7 @@ export default async function MeuPlano() {
   const { barbeariaId } = await exigirGestor();
   const [uso, barbearia, config, pagamentos] = await Promise.all([
     usoDoPlano(barbeariaId),
-    db.barbearia.findUniqueOrThrow({ where: { id: barbeariaId }, select: { nome: true } }),
+    db.barbearia.findUniqueOrThrow({ where: { id: barbeariaId }, select: { nome: true, linkPagamentoSistema: true, asaasAssinaturaSistema: true } }),
     db.configSistema.findUnique({ where: { id: "geral" } }),
     db.pagamentoSistema.findMany({ where: { barbeariaId }, orderBy: { pagoEm: "desc" }, take: 12 }),
   ]);
@@ -55,6 +55,10 @@ export default async function MeuPlano() {
             <span className="text-base font-normal text-couro-400">/{uso.ciclo === "ANUAL" ? "ano" : "mês"}</span>
           </p>
           {uso.pagoAte && <p className="mt-1 text-sm text-couro-700">Pago até <strong>{formatarDia(uso.pagoAte)}</strong></p>}
+          {barbearia.asaasAssinaturaSistema && <p className="mt-1 text-xs text-couro-400">Cobrança automática pelo Asaas: o vencimento renova sozinho quando o pagamento entra.</p>}
+          {barbearia.linkPagamentoSistema && (
+            <a href={barbearia.linkPagamentoSistema} target="_blank" className="btn-destaque mt-4">Pagar mensalidade (Pix, cartão ou boleto)</a>
+          )}
           {suporte && (
             <a
               href={linkWhatsApp(suporte, `Olá! Sou da ${barbearia.nome} (plano ${uso.plano.nome}) e quero falar sobre a mensalidade do KlarezaBarber.`)}

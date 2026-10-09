@@ -7,6 +7,9 @@ import { caixaAberto } from "@/lib/caixa";
 import { db } from "@/lib/db";
 import { filialDoPainel } from "@/lib/filial";
 import { FORMAS_PAGAMENTO, lerDinheiro } from "@/lib/formato";
+import { ErroAsaas } from "@/lib/asaas";
+import { ErroClube, assinarClubeOnline, cancelarAssinaturaDoClube } from "@/lib/clubeOnline";
+import { somenteDigitos } from "@/lib/formato";
 import { LimiteDoPlano, garantirVagaDeAssinante } from "@/lib/planosSistema";
 import { diaLocal, somarMeses } from "@/lib/tempo";
 import type { Resultado } from "../actions";
@@ -60,6 +63,16 @@ export async function novaAssinatura(_: Resultado, form: FormData): Promise<Resu
   const forma = texto(form, "formaPagamento");
   if (!cliente) return { erro: "Escolha o cliente." };
   if (!plano) return { erro: "Escolha o plano." };
+  if (forma === "ONLINE") {
+    try {
+      await assinarClubeOnline({ barbeariaId, clienteId: cliente.id, planoId: plano.id, cpf: somenteDigitos(texto(form, "cpf")) });
+    } catch (e) {
+      if (e instanceof ErroClube || e instanceof ErroAsaas || e instanceof LimiteDoPlano) return { erro: e.message };
+      throw e;
+    }
+    revalidatePath("/painel", "layout");
+    return { ok: `Cobrança criada. Envie o link de pagamento para ${cliente.nome} pelo botão do WhatsApp na lista.` };
+  }
   if (!(forma in FORMAS_PAGAMENTO)) return { erro: "Escolha a forma de pagamento." };
   if (await db.assinatura.findFirst({ where: { clienteId: cliente.id, status: "ATIVA" } }))
     return { erro: `${cliente.nome} já tem uma assinatura ativa.` };
@@ -90,8 +103,14 @@ export async function pagarMensalidade(form: FormData) {
   revalidatePath("/painel", "layout");
 }
 
-export async function cancelarAssinatura(form: FormData) {
+export async function cancelarAssinatura(_: Resultado, form: FormData): Promise<Resultado> {
   const { barbeariaId } = await exigirGestor();
-  await db.assinatura.updateMany({ where: { id: texto(form, "id"), barbeariaId }, data: { status: "CANCELADA" } });
+  try {
+    await cancelarAssinaturaDoClube(barbeariaId, texto(form, "id"));
+  } catch (e) {
+    if (e instanceof ErroClube) return { erro: e.message };
+    throw e;
+  }
   revalidatePath("/painel", "layout");
+  return { ok: "Assinatura cancelada." };
 }

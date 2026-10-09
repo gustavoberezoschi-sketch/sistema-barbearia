@@ -4,12 +4,17 @@ import { FormAcao } from "@/components/FormAcao";
 import { Marca } from "@/components/Marca";
 import { Etiqueta, Indicador, Secao } from "@/components/ui";
 import { db } from "@/lib/db";
-import { formatarDinheiro, formatarTelefone } from "@/lib/formato";
+import { asaasConfigurado, ambienteAsaas } from "@/lib/asaas";
+import { formatarDinheiro, formatarTelefone, linkWhatsApp } from "@/lib/formato";
 import { CODIGOS_PLANO, PLANOS_SISTEMA, type Situacao, planoDe, situacaoDaBarbearia, valorDoCiclo } from "@/lib/planosSistema";
 import { formatarDia, formatarDataHora } from "@/lib/tempo";
 import {
   alterarPlano,
   alternarSuspensao,
+  cobrarPlanoPeloAsaas,
+  configurarWebhookPrincipal,
+  pararCobrancaPlano,
+  salvarConfigAsaas,
   eAdmin,
   entrarAdmin,
   novaBarbearia,
@@ -121,6 +126,8 @@ export default async function Admin() {
                       {b._count.assinaturas}/{plano.assinantes ?? "∞"} assinantes ativos
                     </span>{" "}
                     · {b._count.clientes} clientes · {b._count.agendamentos} agendamentos
+                    {" · "}recebimento online:{" "}
+                    {b.asaasStatus === "APPROVED" ? (b.cobrancaOnlineClube ? "ligado" : "aprovado, desligado") : b.asaasContaId ? "em análise" : "não criado"}
                   </p>
                 </div>
                 <form action={alternarSuspensao}>
@@ -128,6 +135,41 @@ export default async function Admin() {
                   <button className={b.suspensa ? "btn-primario btn-pequeno" : "btn-perigo btn-pequeno"}>{b.suspensa ? "Reativar acesso" : "Suspender acesso"}</button>
                 </form>
               </div>
+
+              {asaasConfigurado() && (
+                <div className="mt-4 border-t border-black/[0.06] pt-4">
+                  {b.asaasAssinaturaSistema ? (
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <Etiqueta tom="azul">Cobrança automática pelo Asaas</Etiqueta>
+                      {b.linkPagamentoSistema && (
+                        <>
+                          <a href={b.linkPagamentoSistema} target="_blank" className="btn-secundario btn-pequeno">Link de pagamento</a>
+                          {b.telefone && (
+                            <a
+                              href={linkWhatsApp(b.telefone, `Olá! Segue o link para pagar a mensalidade do KlarezaBarber (plano ${planoDe(b.plano).nome}): ${b.linkPagamentoSistema}`)}
+                              target="_blank"
+                              className="btn btn-pequeno bg-[#25d366] text-white hover:bg-[#1fb457]"
+                            >
+                              Enviar pelo WhatsApp
+                            </a>
+                          )}
+                        </>
+                      )}
+                      <FormAcao acao={pararCobrancaPlano} className="ml-auto flex flex-col items-end">
+                        <input type="hidden" name="id" value={b.id} />
+                        <button className="text-xs font-medium text-couro-400 hover:text-poste-vermelho">Parar cobrança automática</button>
+                      </FormAcao>
+                    </div>
+                  ) : (
+                    <FormAcao acao={cobrarPlanoPeloAsaas} className="grid items-end gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                      <input type="hidden" name="id" value={b.id} />
+                      <input name="cpfCnpj" className="input" placeholder="CPF/CNPJ de quem paga" inputMode="numeric" aria-label="CPF ou CNPJ" />
+                      <input name="email" type="email" className="input" placeholder="E-mail de quem paga" aria-label="E-mail" />
+                      <button className="btn-secundario">Cobrar pelo Asaas</button>
+                    </FormAcao>
+                  )}
+                </div>
+              )}
 
               <div className="mt-4 grid gap-3 border-t border-black/[0.06] pt-4 lg:grid-cols-2">
                 <FormAcao acao={registrarPagamento} className="grid grid-cols-[1fr_auto] items-end gap-2">
@@ -207,6 +249,33 @@ export default async function Admin() {
                   </li>
                 ))}
               </ul>
+            )}
+          </Secao>
+          <Secao titulo={`Asaas · ${asaasConfigurado() ? ambienteAsaas() : "não configurado"}`}>
+            {!asaasConfigurado() ? (
+              <p className="text-sm text-couro-700">
+                Para ligar os pagamentos online, cadastre na Vercel a variável <code className="rounded bg-fundo px-1">ASAAS_API_KEY</code> com a
+                chave da sua conta Asaas (e <code className="rounded bg-fundo px-1">ASAAS_AMBIENTE=producao</code> quando sair dos testes).
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <FormAcao acao={salvarConfigAsaas} className="grid grid-cols-[1fr_auto] items-end gap-2">
+                  <div>
+                    <label className="label" htmlFor="taxa">Sua taxa sobre cada pagamento online (%)</label>
+                    <input id="taxa" name="taxaPlataformaPct" type="number" min={0} max={20} defaultValue={config?.taxaPlataformaPct ?? 0} className="input" />
+                  </div>
+                  <button className="btn-secundario">Salvar</button>
+                  <p className="col-span-2 text-xs text-couro-400">Vai direto para a sua conta (split). 0 = sem taxa. Vale para assinaturas criadas depois.</p>
+                </FormAcao>
+                <FormAcao acao={configurarWebhookPrincipal} className="grid grid-cols-[1fr_auto] items-end gap-2">
+                  <div>
+                    <label className="label" htmlFor="wh-email">Ativar renovação automática do seu plano</label>
+                    <input id="wh-email" name="email" type="email" className="input" placeholder="Seu e-mail para avisos do Asaas" />
+                  </div>
+                  <button className="btn-secundario">Ativar</button>
+                  <p className="col-span-2 text-xs text-couro-400">Faça uma vez: liga o aviso de pagamentos da sua conta principal ao KlarezaBarber.</p>
+                </FormAcao>
+              </div>
             )}
           </Secao>
           <Secao titulo="Seu WhatsApp de suporte">

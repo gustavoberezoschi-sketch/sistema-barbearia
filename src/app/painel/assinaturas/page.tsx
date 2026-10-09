@@ -4,6 +4,7 @@ import { Crown } from "lucide-react";
 import { FormAcao } from "@/components/FormAcao";
 import { Cabecalho, Etiqueta, Indicador, Secao, Vazio } from "@/components/ui";
 import { exigirGestor } from "@/lib/auth";
+import { cobraOnline } from "@/lib/clubeOnline";
 import { usosDoPlanoNoMes } from "@/lib/comandas";
 import { db } from "@/lib/db";
 import { FORMAS_PAGAMENTO, formatarDinheiro, formatarTelefone, linkWhatsApp } from "@/lib/formato";
@@ -19,22 +20,24 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
   const hoje = diaLocal();
   const [planos, assinaturas, clientes, servicos, barbearia] = await Promise.all([
     db.plano.findMany({ where: { barbeariaId }, include: { servicos: true, _count: { select: { assinaturas: { where: { status: "ATIVA" } } } } }, orderBy: [{ ativo: "desc" }, { precoCentavos: "asc" }] }),
-    db.assinatura.findMany({ where: { barbeariaId, status: "ATIVA" }, include: { cliente: true, plano: true }, orderBy: { pagoAte: "asc" } }),
+    db.assinatura.findMany({ where: { barbeariaId, status: { in: ["ATIVA", "AGUARDANDO"] } }, include: { cliente: true, plano: true }, orderBy: [{ status: "asc" }, { pagoAte: "asc" }] }),
     db.cliente.findMany({ where: { barbeariaId }, orderBy: { nome: "asc" }, select: { id: true, nome: true, telefone: true } }),
     db.servico.findMany({ where: { barbeariaId, ativo: true }, orderBy: [{ categoria: "asc" }, { nome: "asc" }] }),
-    db.barbearia.findUniqueOrThrow({ where: { id: barbeariaId }, select: { nome: true } }),
+    db.barbearia.findUniqueOrThrow({ where: { id: barbeariaId }, select: { nome: true, asaasApiKey: true, asaasStatus: true, cobrancaOnlineClube: true } }),
   ]);
   const usos = new Map(await Promise.all(assinaturas.map(async (a) => [a.id, await usosDoPlanoNoMes(a.clienteId)] as const)));
   const editar = planos.find((x) => x.id === p.editar);
-  const recorrente = assinaturas.reduce((s, a) => s + a.plano.precoCentavos, 0);
-  const atrasadas = assinaturas.filter((a) => a.pagoAte < hoje);
+  const online = cobraOnline(barbearia);
+  const ativas = assinaturas.filter((a) => a.status === "ATIVA");
+  const recorrente = ativas.reduce((s, a) => s + a.plano.precoCentavos, 0);
+  const atrasadas = ativas.filter((a) => a.pagoAte < hoje);
   const ativos = planos.filter((x) => x.ativo);
 
   return (
     <div>
       <Cabecalho titulo="Clube de assinatura" descricao="Planos mensais: o cliente paga todo mês e usa os serviços inclusos sem cobrança na comanda." />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <Indicador rotulo="Assinantes ativos" valor={assinaturas.length} icone={Crown} destaque />
+        <Indicador rotulo="Assinantes ativos" valor={ativas.length} icone={Crown} destaque detalhe={assinaturas.length > ativas.length ? `${assinaturas.length - ativas.length} aguardando o 1º pagamento` : undefined} />
         <Indicador rotulo="Receita recorrente / mês" valor={formatarDinheiro(recorrente)} />
         <Indicador rotulo="Mensalidades atrasadas" valor={atrasadas.length} detalhe={atrasadas.length ? formatarDinheiro(atrasadas.reduce((s, a) => s + a.plano.precoCentavos, 0)) + " em aberto" : "Tudo em dia"} />
       </div>
@@ -47,8 +50,12 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
             ) : (
               <ul className="divide-y divide-black/[0.06]">
                 {assinaturas.map((a) => {
-                  const atrasada = a.pagoAte < hoje;
+                  const aguardando = a.status === "AGUARDANDO";
+                  const atrasada = !aguardando && a.pagoAte < hoje;
                   const usado = usos.get(a.id) ?? 0;
+                  const mensagemLink = a.linkPagamento
+                    ? `Oi, ${a.cliente.nome.split(" ")[0]}! Segue o link para pagar ${aguardando ? "a assinatura" : "a mensalidade"} do ${a.plano.nome} na ${barbearia.nome} (${formatarDinheiro(a.plano.precoCentavos)}). Dá para pagar por Pix, cartão ou boleto: ${a.linkPagamento}`
+                    : null;
                   return (
                     <li key={a.id} className="flex flex-wrap items-center gap-3 py-3">
                       <div className="min-w-0 flex-1">
@@ -58,7 +65,20 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
                           {a.plano.usosPorMes ? ` de ${a.plano.usosPorMes}` : ""} este mês
                         </p>
                       </div>
-                      {atrasada ? <Etiqueta tom="vermelho">Venceu {formatarDia(a.pagoAte)}</Etiqueta> : <Etiqueta tom="verde">Pago até {formatarDia(a.pagoAte)}</Etiqueta>}
+                      {a.asaasId && <Etiqueta tom="azul">Cobrança automática</Etiqueta>}
+                      {aguardando ? (
+                        <Etiqueta tom="latao">Aguardando 1º pagamento</Etiqueta>
+                      ) : atrasada ? (
+                        <Etiqueta tom="vermelho">Venceu {formatarDia(a.pagoAte)}</Etiqueta>
+                      ) : (
+                        <Etiqueta tom="verde">Pago até {formatarDia(a.pagoAte)}</Etiqueta>
+                      )}
+                      {mensagemLink && (
+                        <a href={linkWhatsApp(a.cliente.telefone, mensagemLink)} target="_blank" className="btn btn-pequeno bg-[#25d366] text-white hover:bg-[#1fb457]">
+                          Enviar link de pagamento
+                        </a>
+                      )}
+                      {!a.asaasId && (
                       <form action={pagarMensalidade} className="flex gap-1">
                         <input type="hidden" name="id" value={a.id} />
                         <select name="formaPagamento" className="input w-auto py-1.5 text-xs" aria-label="Forma de pagamento" defaultValue="PIX">
@@ -66,7 +86,8 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
                         </select>
                         <button className="btn-secundario btn-pequeno">Receber mês</button>
                       </form>
-                      {atrasada && (
+                      )}
+                      {atrasada && !a.asaasId && (
                         <a
                           href={linkWhatsApp(a.cliente.telefone, `Oi, ${a.cliente.nome.split(" ")[0]}! A mensalidade do seu plano ${a.plano.nome} na ${barbearia.nome} (${formatarDinheiro(a.plano.precoCentavos)}) venceu em ${formatarDia(a.pagoAte)}. Pode acertar na sua próxima visita ou via Pix. Valeu!`)}
                           target="_blank"
@@ -75,10 +96,10 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
                           Cobrar
                         </a>
                       )}
-                      <form action={cancelarAssinatura}>
+                      <FormAcao acao={cancelarAssinatura} className="flex flex-col items-end">
                         <input type="hidden" name="id" value={a.id} />
                         <button className="text-xs font-medium text-couro-400 hover:text-poste-vermelho">Cancelar</button>
-                      </form>
+                      </FormAcao>
                     </li>
                   );
                 })}
@@ -126,9 +147,11 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
                 <select name="planoId" className="input" required aria-label="Plano">
                   {ativos.map((pl) => <option key={pl.id} value={pl.id}>{pl.nome} · {formatarDinheiro(pl.precoCentavos)}/mês</option>)}
                 </select>
-                <select name="formaPagamento" className="input" defaultValue="PIX" aria-label="Forma de pagamento da 1ª mensalidade">
-                  {Object.entries(FORMAS_PAGAMENTO).map(([v, r]) => <option key={v} value={v}>1ª mensalidade em {r}</option>)}
+                <select name="formaPagamento" className="input" defaultValue={online ? "ONLINE" : "PIX"} aria-label="Forma de pagamento da 1ª mensalidade">
+                  {online && <option value="ONLINE">Cobrar online todo mês (Pix, cartão ou boleto)</option>}
+                  {Object.entries(FORMAS_PAGAMENTO).map(([v, r]) => <option key={v} value={v}>1ª mensalidade em {r} (no balcão)</option>)}
                 </select>
+                {online && <input name="cpf" className="input" placeholder="CPF do cliente (para cobrança online)" inputMode="numeric" aria-label="CPF do cliente" />}
                 <button className="btn-destaque"><Crown className="size-4" /> Assinar</button>
               </FormAcao>
             </Secao>

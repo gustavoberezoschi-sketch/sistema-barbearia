@@ -8,8 +8,11 @@ import { redirect } from "next/navigation";
 import { ErroCadastro, criarBarbearia, redefinirSenha } from "@/lib/barbearias";
 import { db } from "@/lib/db";
 import { lerDinheiro, somenteDigitos } from "@/lib/formato";
-import { CODIGOS_PLANO, proximoVencimento, valorDoCiclo } from "@/lib/planosSistema";
-import { diaValido } from "@/lib/tempo";
+import { ErroAsaas, cancelarAssinaturaAsaas, carteiraPrincipal, configurarWebhook, criarAssinatura, criarCliente, linkDaPrimeiraCobranca } from "@/lib/asaas";
+import { tokenWebhookAsaas } from "@/lib/cripto";
+import { CODIGOS_PLANO, planoDe, proximoVencimento, valorDoCiclo } from "@/lib/planosSistema";
+import { enderecoDoSite } from "@/lib/site";
+import { diaLocal, diaValido } from "@/lib/tempo";
 import { limparVariavel } from "@/lib/env";
 import type { Resultado } from "../painel/actions";
 
@@ -153,4 +156,91 @@ export async function salvarConfigSistema(_: Resultado, form: FormData): Promise
   revalidatePath("/admin");
   revalidatePath("/painel", "layout");
   return { ok: "Configuração salva." };
+}
+
+// ---------- Asaas (conta principal do KlarezaBarber) ----------
+
+export async function salvarConfigAsaas(_: Resultado, form: FormData): Promise<Resultado> {
+  await exigirAdmin();
+  const taxa = Number(campo(form, "taxaPlataformaPct") || 0);
+  if (!Number.isInteger(taxa) || taxa < 0 || taxa > 20) return { erro: "A taxa deve ficar entre 0 e 20%." };
+  let walletId: string | null = null;
+  if (taxa > 0) {
+    try {
+      walletId = await carteiraPrincipal();
+    } catch (e) {
+      if (e instanceof ErroAsaas) return { erro: `Não consegui buscar sua carteira no Asaas: ${e.message}` };
+      throw e;
+    }
+    if (!walletId) return { erro: "Não encontrei a carteira da conta principal no Asaas." };
+  }
+  await db.configSistema.upsert({
+    where: { id: "geral" },
+    update: { taxaPlataformaPct: taxa, asaasWalletId: walletId },
+    create: { id: "geral", taxaPlataformaPct: taxa, asaasWalletId: walletId },
+  });
+  revalidatePath("/admin");
+  return { ok: taxa > 0 ? `Taxa de ${taxa}% salva: vale para as próximas assinaturas online.` : "Sem taxa da plataforma." };
+}
+
+export async function configurarWebhookPrincipal(_: Resultado, form: FormData): Promise<Resultado> {
+  await exigirAdmin();
+  const email = campo(form, "email");
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { erro: "Informe o e-mail para avisos do Asaas." };
+  try {
+    await configurarWebhook(`${await enderecoDoSite()}/api/asaas/webhook`, tokenWebhookAsaas(), email);
+  } catch (e) {
+    if (e instanceof ErroAsaas) return { erro: e.message };
+    throw e;
+  }
+  return { ok: "Webhook configurado: os pagamentos do seu plano agora renovam o vencimento sozinhos." };
+}
+
+/** Cria a cobrança recorrente do plano do KlarezaBarber para a barbearia (conta principal). */
+export async function cobrarPlanoPeloAsaas(_: Resultado, form: FormData): Promise<Resultado> {
+  await exigirAdmin();
+  const b = await db.barbearia.findUnique({ where: { id: campo(form, "id") } });
+  if (!b) return { erro: "Barbearia não encontrada." };
+  if (b.asaasAssinaturaSistema) return { erro: "Essa barbearia já tem cobrança automática." };
+  const documento = somenteDigitos(campo(form, "cpfCnpj"));
+  const email = campo(form, "email");
+  if (documento.length !== 11 && documento.length !== 14) return { erro: "Informe o CPF ou CNPJ de quem paga." };
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { erro: "Informe o e-mail de quem paga." };
+  try {
+    const clienteId = b.asaasClienteSistemaId ?? (await criarCliente({ name: b.nome, cpfCnpj: documento, email, mobilePhone: b.telefone ?? undefined, externalReference: b.id })).id;
+    const hoje = diaLocal();
+    const assinatura = await criarAssinatura({
+      customer: clienteId,
+      value: valorDoCiclo(b.plano, b.ciclo) / 100,
+      nextDueDate: b.pagoAte && b.pagoAte > hoje ? b.pagoAte : hoje,
+      cycle: b.ciclo === "ANUAL" ? "YEARLY" : "MONTHLY",
+      description: `KlarezaBarber · plano ${planoDe(b.plano).nome} ${b.ciclo === "ANUAL" ? "anual" : "mensal"}`,
+      externalReference: b.id,
+    });
+    const link = await linkDaPrimeiraCobranca(assinatura.id);
+    await db.barbearia.update({
+      where: { id: b.id },
+      data: { asaasClienteSistemaId: clienteId, asaasAssinaturaSistema: assinatura.id, linkPagamentoSistema: link },
+    });
+  } catch (e) {
+    if (e instanceof ErroAsaas) return { erro: e.message };
+    throw e;
+  }
+  revalidatePath("/admin");
+  return { ok: "Cobrança automática criada. Envie o link de pagamento para a barbearia." };
+}
+
+export async function pararCobrancaPlano(_: Resultado, form: FormData): Promise<Resultado> {
+  await exigirAdmin();
+  const b = await db.barbearia.findUnique({ where: { id: campo(form, "id") } });
+  if (!b?.asaasAssinaturaSistema) return { erro: "Sem cobrança automática." };
+  try {
+    await cancelarAssinaturaAsaas(b.asaasAssinaturaSistema);
+  } catch (e) {
+    if (e instanceof ErroAsaas) return { erro: e.message };
+    throw e;
+  }
+  await db.barbearia.update({ where: { id: b.id }, data: { asaasAssinaturaSistema: null, linkPagamentoSistema: null } });
+  revalidatePath("/admin");
+  return { ok: "Cobrança automática encerrada." };
 }

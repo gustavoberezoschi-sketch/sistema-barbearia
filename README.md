@@ -56,6 +56,26 @@ unidade e assinante. Em `/admin` você define o plano de cada barbearia, registr
 acompanha a receita e suspende o acesso de quem não pagou. A página `/planos` mostra os planos
 para quem quiser contratar.
 
+## Pagamentos online (Asaas com subcontas)
+
+Cada barbearia abre, pelo painel em **Pagamentos online**, uma subconta do Asaas em nome dela
+(envia documento e selfie pelo link que aparece). Depois de aprovada, liga a cobrança online:
+
+- O cliente assina o clube pela área dele e paga por Pix, cartão ou boleto; a mensalidade é
+  cobrada todo mês e o plano renova sozinho (webhook `/api/asaas/webhook`).
+- No painel, o dono pode criar a assinatura online para quem assina no balcão e mandar o link
+  de pagamento pelo WhatsApp.
+- O dinheiro cai na conta Asaas da barbearia. Em `/admin` você define uma taxa sua (%) que vai
+  por split para a sua conta principal (0 = sem taxa).
+- Em `/admin` também dá para cobrar o próprio plano do KlarezaBarber pelo Asaas; o pagamento
+  renova o acesso da barbearia sozinho.
+
+Taxas iniciais do Asaas: Pix 1,99% + R$ 1,99; cartão 3,99% + R$ 1,99.
+
+Para ligar: crie a conta principal no Asaas, peça ao comercial a liberação de **subcontas**,
+cadastre `ASAAS_API_KEY` (e `ASAAS_AMBIENTE=producao` fora do sandbox) na Vercel e, em `/admin`,
+clique em **Ativar** na seção Asaas.
+
 ## Tecnologias
 
 Next.js 15 (React 19) · TypeScript · Tailwind CSS 4 · Prisma · PostgreSQL (Supabase) · hospedagem na Vercel
@@ -88,6 +108,8 @@ Leva uns 15 minutos. Você só precisa de uma conta no GitHub (que já tem).
    | `DIRECT_URL` | a linha da porta **5432** copiada do Supabase |
    | `AUTH_SECRET` | uma sequência aleatória longa (ex.: gere em https://generate-secret.vercel.app/32) |
    | `ADMIN_SENHA` | uma senha forte, só sua, para a área de administração |
+   | `ASAAS_API_KEY` | (opcional) chave da sua conta Asaas, para pagamentos online |
+   | `ASAAS_AMBIENTE` | (opcional) `sandbox` para testes ou `producao` |
 
 4. Clique em **Deploy**. A Vercel instala tudo, **cria as tabelas no Supabase sozinha** e
    publica o site num endereço como `https://sistema-barbearia.vercel.app`.

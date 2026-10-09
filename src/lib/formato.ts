@@ -31,7 +31,7 @@ export const FORMAS_PAGAMENTO: Record<string, string> = {
   CARTAO_CREDITO: "Cartão de crédito",
 };
 
-export const NOME_FORMA: Record<string, string> = { ...FORMAS_PAGAMENTO, SEM_COBRANCA: "Sem cobrança (plano)" };
+export const NOME_FORMA: Record<string, string> = { ...FORMAS_PAGAMENTO, BOLETO: "Boleto", SEM_COBRANCA: "Sem cobrança (plano)" };
 
 /** Cor de texto legível (escura ou branca) sobre um fundo hexadecimal. */
 export function corDoTexto(hex: string): string {

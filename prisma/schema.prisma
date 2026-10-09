@@ -30,11 +30,22 @@ model Barbearia {
   msgLembrete    String?
 
   // Assinatura do KlarezaBarber (o que a barbearia paga para usar o sistema)
-  plano    String   @default("BAIRRO") // BAIRRO | CIDADE | NACIONAL
-  ciclo    String   @default("MENSAL") // MENSAL | ANUAL
+  plano    String  @default("BAIRRO") // BAIRRO | CIDADE | NACIONAL
+  ciclo    String  @default("MENSAL") // MENSAL | ANUAL
   pagoAte  String? // "2026-11-10"; vazio = sem vencimento controlado
-  suspensa Boolean  @default(false) // sem pagamento: painel e agendamento bloqueados
-  criadoEm DateTime @default(now())
+  suspensa Boolean @default(false) // sem pagamento: painel e agendamento bloqueados
+
+  // Asaas: subconta de recebimento da barbearia (dinheiro dos clientes)
+  asaasContaId           String?
+  asaasWalletId          String?
+  asaasApiKey            String? // criptografada
+  asaasStatus            String? // PENDING | AWAITING_APPROVAL | APPROVED | REJECTED
+  cobrancaOnlineClube    Boolean  @default(false)
+  // Asaas: cobrança do plano do KlarezaBarber (conta principal)
+  asaasClienteSistemaId  String?
+  asaasAssinaturaSistema String?  @unique
+  linkPagamentoSistema   String?
+  criadoEm               DateTime @default(now())
 
   usuarios          Usuario[]
   filiais           Filial[]
@@ -161,6 +172,8 @@ model Cliente {
   observacao            String?
   saldoCashbackCentavos Int       @default(0)
   senhaHash             String? // acesso à área do cliente
+  cpf                   String? // exigido para pagar online
+  asaasClienteId        String?
   criadoEm              DateTime  @default(now())
 
   agendamentos Agendamento[]
@@ -353,30 +366,34 @@ model Plano {
 }
 
 model Assinatura {
-  id          String    @id @default(cuid())
-  barbeariaId String
-  barbearia   Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
-  clienteId   String
-  cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  planoId     String
-  plano       Plano     @relation(fields: [planoId], references: [id])
-  status      String    @default("ATIVA") // ATIVA | CANCELADA
-  inicio      DateTime  @default(now())
-  pagoAte     String // "2026-11-09": cobertura vale até esse dia
-  criadoEm    DateTime  @default(now())
+  id            String    @id @default(cuid())
+  barbeariaId   String
+  barbearia     Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  clienteId     String
+  cliente       Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  planoId       String
+  plano         Plano     @relation(fields: [planoId], references: [id])
+  status        String    @default("ATIVA") // ATIVA | CANCELADA
+  inicio        DateTime  @default(now())
+  pagoAte       String // "2026-11-09": cobertura vale até esse dia
+  asaasId       String?   @unique // assinatura recorrente no Asaas
+  linkPagamento String? // link da cobrança em aberto mais recente
+  criadoEm      DateTime  @default(now())
 
   pagamentos PagamentoAssinatura[]
 }
 
 model PagamentoAssinatura {
-  id             String     @id @default(cuid())
-  assinaturaId   String
-  assinatura     Assinatura @relation(fields: [assinaturaId], references: [id], onDelete: Cascade)
-  caixaId        String?
-  caixa          Caixa?     @relation(fields: [caixaId], references: [id])
-  valorCentavos  Int
-  formaPagamento String
-  pagoEm         DateTime   @default(now())
+  id                   String     @id @default(cuid())
+  assinaturaId         String
+  assinatura           Assinatura @relation(fields: [assinaturaId], references: [id], onDelete: Cascade)
+  caixaId              String?
+  caixa                Caixa?     @relation(fields: [caixaId], references: [id])
+  valorCentavos        Int
+  formaPagamento       String
+  pagoEm               DateTime   @default(now())
+  asaasPagamentoId     String?    @unique
+  valorLiquidoCentavos Int? // o que sobra depois da taxa do Asaas
 }
 
 // Despesas da barbearia (aluguel, luz, fornecedores, comissões pagas...).
@@ -422,21 +439,24 @@ model Parceiro {
 
 // Pagamentos que a barbearia fez ao KlarezaBarber.
 model PagamentoSistema {
-  id            String    @id @default(cuid())
-  barbeariaId   String
-  barbearia     Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
-  plano         String
-  ciclo         String
-  valorCentavos Int
-  referenteAte  String // até quando esse pagamento cobre
-  observacao    String?
-  pagoEm        DateTime  @default(now())
+  id               String    @id @default(cuid())
+  barbeariaId      String
+  barbearia        Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  plano            String
+  ciclo            String
+  valorCentavos    Int
+  referenteAte     String // até quando esse pagamento cobre
+  observacao       String?
+  pagoEm           DateTime  @default(now())
+  asaasPagamentoId String?   @unique
 
   @@index([barbeariaId, pagoEm])
 }
 
 // Configurações gerais do KlarezaBarber (uma linha só, id = "geral").
 model ConfigSistema {
-  id              String  @id @default("geral")
-  whatsappSuporte String? // número para as barbearias pedirem suporte ou mudança de plano
+  id                String  @id @default("geral")
+  whatsappSuporte   String? // número para as barbearias pedirem suporte ou mudança de plano
+  taxaPlataformaPct Int     @default(0) // % de cada pagamento online que vai para o KlarezaBarber (split)
+  asaasWalletId     String? // carteira da conta principal (destino do split)
 }

@@ -3,7 +3,10 @@
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { ErroAsaas } from "@/lib/asaas";
 import { exigirCliente, entrarComoCliente, sairDoCliente } from "@/lib/clienteAuth";
+import { ErroClube, assinarClubeOnline } from "@/lib/clubeOnline";
+import { LimiteDoPlano } from "@/lib/planosSistema";
 import { db } from "@/lib/db";
 import { somenteDigitos } from "@/lib/formato";
 import type { Resultado } from "@/app/painel/actions";
@@ -67,4 +70,25 @@ export async function trocarSenha(slug: string, _: Resultado, form: FormData): P
   if (nova.length < 6) return { erro: "A nova senha precisa ter pelo menos 6 caracteres." };
   await db.cliente.update({ where: { id: cliente.id }, data: { senhaHash: await bcrypt.hash(nova, 10) } });
   return { ok: "Senha alterada." };
+}
+
+export async function assinarPeloCliente(slug: string, _: Resultado, form: FormData): Promise<Resultado> {
+  const cliente = await exigirCliente(slug);
+  let link: string | null = null;
+  try {
+    const r = await assinarClubeOnline({
+      barbeariaId: cliente.barbeariaId,
+      clienteId: cliente.id,
+      planoId: texto(form, "planoId"),
+      cpf: somenteDigitos(texto(form, "cpf")),
+    });
+    link = r.link;
+  } catch (e) {
+    if (e instanceof ErroClube || e instanceof ErroAsaas || e instanceof LimiteDoPlano) return { erro: e.message };
+    throw e;
+  }
+  revalidatePath(`/b/${slug}`, "layout");
+  revalidatePath("/painel", "layout");
+  if (link) redirect(link);
+  return { ok: "Assinatura criada. O link de pagamento aparece aqui em instantes." };
 }
