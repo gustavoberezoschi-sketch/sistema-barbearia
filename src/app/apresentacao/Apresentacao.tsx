@@ -26,7 +26,7 @@ import { formatarDinheiro, linkWhatsApp } from "@/lib/formato";
 import "./apresentacao.css";
 
 type Plano = { nome: string; mensal: number; anual: number; unidades: number | null; assinantes: number | null };
-type Props = { para: string | null; whatsapp: string | null; planos: Plano[] };
+type Props = { para: string | null; whatsapp: string | null; planos: Plano[]; video?: boolean };
 
 // ---------- utilidades de animação ----------
 
@@ -145,7 +145,7 @@ function Problema() {
       <ul className="space-y-4 sm:space-y-5">
         {dores.map((t, i) => (
           <A key={t} as="li" d={0.3 + i * 0.35} c="ap-esq" className="font-display text-2xl font-bold text-white sm:text-4xl">
-            <span className="ap-apaga ap-risca inline-block" style={{ "--r": `${2.4 + i * 0.3}s` } as CSSProperties}>{t}</span>
+            <span className="ap-risca" style={{ "--r": `${2.4 + i * 0.3}s` } as CSSProperties}>{t}</span>
           </A>
         ))}
       </ul>
@@ -613,7 +613,7 @@ function Planos({ planos }: { planos: Plano[] }) {
   );
 }
 
-function Final({ whatsapp, para, recomecar }: { whatsapp: string | null; para: string | null; recomecar: () => void }) {
+function Final({ whatsapp, para, recomecar, video }: { whatsapp: string | null; para: string | null; recomecar: () => void; video: boolean }) {
   const msg = para ? `Olá! Vi a apresentação do KlarezaBarber e quero colocar a ${para} no sistema.` : "Olá! Vi a apresentação do KlarezaBarber e quero saber mais.";
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
@@ -624,6 +624,11 @@ function Final({ whatsapp, para, recomecar }: { whatsapp: string | null; para: s
         </h2>
       </A>
       <A d={0.7}><p className="mt-4 text-lg text-couro-300">A gente cadastra tudo com você: equipe, serviços, horários e planos.</p></A>
+      {video ? (
+        <A d={1} c="ap-pop" className="mt-8 rounded-full bg-latao-500 px-7 py-3.5 font-display text-lg font-bold text-couro-950">
+          Peça uma demonstração
+        </A>
+      ) : (
       <A d={1} className="mt-8 flex flex-wrap justify-center gap-3">
         {whatsapp && (
           <a href={linkWhatsApp(whatsapp, msg)} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()} className="btn bg-[#25d366] px-6 py-3.5 text-base text-white hover:bg-[#1fb457]">
@@ -640,6 +645,7 @@ function Final({ whatsapp, para, recomecar }: { whatsapp: string | null; para: s
           <RotateCcw className="size-4" /> Ver de novo
         </button>
       </A>
+      )}
       <A d={1.3} c="ap-largura" className="ap-poste mt-12 h-2 w-40 rounded-full" />
     </div>
   );
@@ -649,7 +655,7 @@ function Final({ whatsapp, para, recomecar }: { whatsapp: string | null; para: s
 
 const DURACAO = [5500, 7500, 9000, 8500, 8000, 8500, 8000, 7500, 8000, 7500, 9000, 0];
 
-export function Apresentacao({ para, whatsapp, planos }: Props) {
+export function Apresentacao({ para, whatsapp, planos, video = false }: Props) {
   const nome = para ?? "Barbearia do Centro";
   const [cena, setCena] = useState(0);
   const [pausado, setPausado] = useState(false);
@@ -696,7 +702,7 @@ export function Apresentacao({ para, whatsapp, planos }: Props) {
     <AreaCliente key="ac" nome={nome} />,
     <Unidades key="u" />,
     <Planos key="pl" planos={planos} />,
-    <Final key="fi" whatsapp={whatsapp} para={para} recomecar={() => ir(0)} />,
+    <Final key="fi" whatsapp={whatsapp} para={para} recomecar={() => ir(0)} video={video} />,
   ];
 
   const clicar = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -733,7 +739,7 @@ export function Apresentacao({ para, whatsapp, planos }: Props) {
         {cenas[cena]}
       </main>
 
-      <div className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-between px-4 pb-4 sm:px-6">
+      <div className={`absolute inset-x-0 bottom-0 z-30 flex items-center justify-between px-4 pb-4 sm:px-6 ${video ? "hidden" : ""}`}>
         <span className="text-xs text-couro-400 tabular-nums">{cena + 1} / {total}</span>
         <div className="flex gap-1.5">
           <Controle rotulo="Anterior" onClick={() => ir(cena - 1)}><ChevronLeft className="size-4" /></Controle>

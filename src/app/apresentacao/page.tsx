@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 /** Apresentação animada para mostrar o sistema às barbearias. Use ?para=Nome da Barbearia para personalizar. */
-export default async function PaginaApresentacao({ searchParams }: { searchParams: Promise<{ para?: string }> }) {
-  const { para } = await searchParams;
+export default async function PaginaApresentacao({ searchParams }: { searchParams: Promise<{ para?: string; video?: string }> }) {
+  const { para, video } = await searchParams;
   const config = await db.configSistema.findUnique({ where: { id: "geral" } }).catch(() => null);
   const planos = Object.values(PLANOS_SISTEMA).map((p) => ({ ...p }));
-  return <Apresentacao para={para?.trim().slice(0, 60) || null} whatsapp={config?.whatsappSuporte ?? null} planos={planos} />;
+  return <Apresentacao para={para?.trim().slice(0, 60) || null} whatsapp={config?.whatsappSuporte ?? null} planos={planos} video={video === "1"} />;
 }

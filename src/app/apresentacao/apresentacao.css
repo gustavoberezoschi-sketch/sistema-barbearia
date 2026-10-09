@@ -37,20 +37,14 @@
 @keyframes ap-largura { to { transform: scaleX(1); } }
 
 /* Problema riscado */
-.ap-risca { position: relative; }
-.ap-risca::after {
-  content: "";
-  position: absolute;
-  left: -4px;
-  right: -4px;
-  top: 52%;
-  height: 3px;
-  border-radius: 3px;
-  background: var(--color-poste-vermelho);
-  transform: scaleX(0);
-  transform-origin: left;
-  animation: ap-largura 0.45s ease-out var(--r, 1s) forwards;
+.ap-risca {
+  background: linear-gradient(var(--color-poste-vermelho), var(--color-poste-vermelho)) no-repeat 0 58% / 0% 3px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  animation: ap-risca 0.45s ease-out var(--r, 1s) forwards, ap-cinza 0.5s ease-out var(--r, 1s) forwards;
 }
+@keyframes ap-risca { to { background-size: 100% 3px; } }
+@keyframes ap-cinza { to { color: rgb(255 255 255 / 0.35); } }
 .ap-apaga { animation: ap-apaga 0.5s ease-out var(--r, 1s) forwards; }
 @keyframes ap-apaga { to { opacity: 0.35; } }
 
