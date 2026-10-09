@@ -44,9 +44,13 @@ export async function novaComanda(_: Resultado, form: FormData): Promise<Resulta
   const barbeiroId = sessao.barbeiroId ?? (texto(form, "barbeiroId") || null);
   if (clienteId && !(await db.cliente.findFirst({ where: { id: clienteId, barbeariaId: sessao.barbeariaId } })))
     return { erro: "Cliente não encontrado." };
-  if (barbeiroId && !(await db.barbeiro.findFirst({ where: { id: barbeiroId, barbeariaId: sessao.barbeariaId } })))
-    return { erro: "Barbeiro não encontrado." };
-  const comanda = await abrirComanda({ barbeariaId: sessao.barbeariaId, clienteId, barbeiroId });
+  const barbeiro = barbeiroId ? await db.barbeiro.findFirst({ where: { id: barbeiroId, barbeariaId: sessao.barbeariaId } }) : null;
+  if (barbeiroId && !barbeiro) return { erro: "Barbeiro não encontrado." };
+  const filial = await db.filial.findFirst({
+    where: { barbeariaId: sessao.barbeariaId, id: barbeiro?.filialId ?? (texto(form, "filialId") || "-") },
+  });
+  if (!filial) return { erro: "Escolha a unidade." };
+  const comanda = await abrirComanda({ barbeariaId: sessao.barbeariaId, filialId: filial.id, clienteId, barbeiroId });
   redirect(`/painel/comandas/${comanda.id}`);
 }
 

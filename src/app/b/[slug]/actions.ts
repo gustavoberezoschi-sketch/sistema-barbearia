@@ -23,11 +23,15 @@ async function servicosOnline(barbeariaId: string, servicoIds: string[]) {
   return n === new Set(servicoIds).size;
 }
 
-export async function buscarHorarios(slug: string, servicoIds: string[], barbeiroId: string | null, dia: string) {
+async function filialAtiva(barbeariaId: string, filialId: string) {
+  return db.filial.findFirst({ where: { id: filialId, barbeariaId, ativo: true } });
+}
+
+export async function buscarHorarios(slug: string, filialId: string, servicoIds: string[], barbeiroId: string | null, dia: string) {
   const barbearia = await carregarBarbearia(slug);
   if (!barbearia || !diaPermitido(dia, barbearia.antecedenciaDias)) return [];
-  if (!(await servicosOnline(barbearia.id, servicoIds))) return [];
-  const horarios = await horariosDisponiveis({ barbeariaId: barbearia.id, servicoIds, barbeiroId, dia });
+  if (!(await filialAtiva(barbearia.id, filialId)) || !(await servicosOnline(barbearia.id, servicoIds))) return [];
+  const horarios = await horariosDisponiveis({ barbeariaId: barbearia.id, filialId, servicoIds, barbeiroId, dia });
   return horarios.map((h) => h.hora);
 }
 
@@ -42,10 +46,11 @@ export type Confirmacao =
 
 export async function agendar(
   slug: string,
-  dados: { servicoIds: string[]; barbeiroId: string | null; dia: string; hora: string; nome?: string; telefone?: string; senha?: string },
+  dados: { filialId: string; servicoIds: string[]; barbeiroId: string | null; dia: string; hora: string; nome?: string; telefone?: string; senha?: string },
 ): Promise<Confirmacao> {
   const barbearia = await carregarBarbearia(slug);
   if (!barbearia) return { ok: false, erro: "Barbearia não encontrada." };
+  if (!(await filialAtiva(barbearia.id, dados.filialId))) return { ok: false, erro: "Unidade indisponível." };
   if (!diaPermitido(dados.dia, barbearia.antecedenciaDias) || !/^\d{2}:\d{2}$/.test(dados.hora))
     return { ok: false, erro: "Data ou horário inválido." };
   if (!(await servicosOnline(barbearia.id, dados.servicoIds))) return { ok: false, erro: "Serviço indisponível." };

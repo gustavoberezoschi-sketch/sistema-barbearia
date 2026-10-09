@@ -83,8 +83,11 @@ export async function salvarBarbeiro(_: Resultado, form: FormData): Promise<Resu
     if (!Number.isInteger(pct) || pct < 0 || pct > 100) return { erro: "As comissões devem ficar entre 0 e 100%." };
   if (email && !/^\S+@\S+\.\S+$/.test(email)) return { erro: "E-mail de acesso inválido." };
 
+  const filial = await db.filial.findFirst({ where: { id: texto(form, "filialId"), barbeariaId } });
+  if (!filial) return { erro: "Escolha a unidade em que o barbeiro trabalha." };
   const dados = {
     nome,
+    filialId: filial.id,
     telefone: somenteDigitos(texto(form, "telefone")) || null,
     foto: imagem(form, "foto"),
     comissaoPct,
@@ -188,16 +191,6 @@ export async function salvarConfiguracoes(_: Resultado, form: FormData): Promise
   if (!Number.isInteger(cashbackPct) || cashbackPct < 0 || cashbackPct > 50)
     return { erro: "O cashback deve ficar entre 0 e 50%." };
 
-  const horarios: { diaSemana: number; abre: string; fecha: string }[] = [];
-  for (let d = 0; d < 7; d++) {
-    if (form.get(`aberto_${d}`) !== "on") continue;
-    const abre = texto(form, `abre_${d}`);
-    const fecha = texto(form, `fecha_${d}`);
-    if (!/^\d{2}:\d{2}$/.test(abre) || !/^\d{2}:\d{2}$/.test(fecha) || abre >= fecha)
-      return { erro: "Confira os horários de abertura e fechamento." };
-    horarios.push({ diaSemana: d, abre, fecha });
-  }
-
   await db.$transaction([
     db.barbearia.update({
       where: { id: barbeariaId },
@@ -216,8 +209,6 @@ export async function salvarConfiguracoes(_: Resultado, form: FormData): Promise
         cashbackPct,
       },
     }),
-    db.horarioFuncionamento.deleteMany({ where: { barbeariaId } }),
-    db.horarioFuncionamento.createMany({ data: horarios.map((h) => ({ ...h, barbeariaId })) }),
   ]);
   revalidatePath("/painel", "layout");
   return { ok: "Configurações salvas." };

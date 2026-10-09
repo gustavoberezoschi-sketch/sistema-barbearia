@@ -29,13 +29,14 @@ o próprio login, os próprios dados e o próprio link de agendamento.
 - **Equipe:** foto, comissão de serviços e de produtos, e login próprio do barbeiro (vê só a agenda, as comandas e as comissões dele)
 
 **Gestão**
+- **Unidades (filiais):** cada unidade tem endereço, horário, equipe, agenda e caixa próprios; clientes, serviços, planos, banners e parceiros valem em todas. Seletor de unidade no menu (ou "Todas as unidades") e relatório comparando as unidades
 - **Financeiro:** contas a pagar (com recorrência), resultado do mês (entradas − comissões − despesas)
 - **Relatórios:** faturamento por dia, comissões por barbeiro, serviços e produtos mais vendidos, formas de pagamento, % de agendamento online e de faltas
 - **Configurações:** logo, foto de capa, cor da marca, apresentação, Instagram, horários, intervalo, antecedência, prazo de cancelamento e cashback
 
 **Página e área do cliente** (`/b/<barbearia>`)
 - Página da barbearia: capa, logo, banners, profissionais (com selo de destaque), serviços, planos, horários, mapa, WhatsApp e Instagram
-- Agendamento em etapas: profissional → serviços (pode escolher vários de uma vez) → horário, com o total e a duração no rodapé
+- Agendamento em etapas: filial (quando há mais de uma) → profissional → serviços (pode escolher vários de uma vez) → horário, com o total e a duração no rodapé
 - **Área do cliente** com login (WhatsApp + senha): início com banners, "Seu plano", clube de vantagens e próximos agendamentos; agendamentos (agendados e anteriores); plano; perfil
 - Assinante vê os serviços do plano como "No seu plano" (R$ 0,00)
 - **Clube de vantagens:** parceiros com cupons de desconto, gerenciados no painel em "Página do cliente"

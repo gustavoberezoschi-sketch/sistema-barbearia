@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { exigirGestor } from "@/lib/auth";
 import { caixaAberto } from "@/lib/caixa";
 import { db } from "@/lib/db";
+import { filialDoPainel } from "@/lib/filial";
 import { FORMAS_PAGAMENTO, lerDinheiro } from "@/lib/formato";
 import { diaLocal, somarMeses } from "@/lib/tempo";
 import type { Resultado } from "../actions";
@@ -42,8 +43,10 @@ export async function alternarPlano(form: FormData) {
   revalidatePath("/painel", "layout");
 }
 
+/** Registra a mensalidade; entra no caixa aberto da unidade escolhida no painel (se houver). */
 async function registrar(assinaturaId: string, valor: number, forma: string, barbeariaId: string) {
-  const caixa = await caixaAberto(barbeariaId);
+  const { atual } = await filialDoPainel(await exigirGestor());
+  const caixa = atual ? await caixaAberto(barbeariaId, atual.id) : null;
   await db.pagamentoAssinatura.create({ data: { assinaturaId, valorCentavos: valor, formaPagamento: forma, caixaId: caixa?.id ?? null } });
 }
 

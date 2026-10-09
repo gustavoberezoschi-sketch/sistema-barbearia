@@ -56,6 +56,7 @@ export async function criarAgendamento(_: Resultado, form: FormData): Promise<Re
     await tx.agendamento.create({
       data: {
         barbeariaId,
+        filialId: barbeiro.filialId,
         barbeiroId: barbeiro.id,
         servicoId: servico.id,
         clienteId,
@@ -94,7 +95,7 @@ export async function remarcarAgendamento(_: Resultado, form: FormData): Promise
   const conflito = await comTravaDaAgenda(sessao.barbeariaId, async (tx) => {
     const c = form.get("encaixe") === "on" ? null : await temConflito(barbeiroId, inicio, fim, tx, ag.id);
     if (c) return c;
-    await tx.agendamento.update({ where: { id: ag.id }, data: { inicio, fim, barbeiroId } });
+    await tx.agendamento.update({ where: { id: ag.id }, data: { inicio, fim, barbeiroId, filialId: barbeiro.filialId } });
     return null;
   });
   if (conflito) return { erro: `${barbeiro.nome} ${MENSAGEM_CONFLITO[conflito]}.` };
@@ -132,18 +133,29 @@ export async function criarBloqueio(_: Resultado, form: FormData): Promise<Resul
   const diaInteiro = form.get("diaInteiro") === "on";
   const horaInicio = diaInteiro ? "00:00" : texto(form, "horaInicio");
   const horaFim = diaInteiro ? "23:59" : texto(form, "horaFim");
-  let barbeiroId: string | null = sessao.papel === "BARBEIRO" ? sessao.barbeiroId : texto(form, "barbeiroId") || null;
+  // "quem": id do barbeiro, "filial:<id>" (unidade inteira) ou "todas" (todas as unidades)
+  const quem = sessao.papel === "BARBEIRO" ? sessao.barbeiroId ?? "" : texto(form, "quem");
+  let barbeiroId: string | null = null;
+  let filialId: string | null = null;
+  if (quem.startsWith("filial:")) {
+    const f = await db.filial.findFirst({ where: { id: quem.slice(7), barbeariaId: sessao.barbeariaId } });
+    if (!f) return { erro: "Unidade não encontrada." };
+    filialId = f.id;
+  } else if (quem !== "todas") {
+    const b = await db.barbeiro.findFirst({ where: { id: quem, barbeariaId: sessao.barbeariaId } });
+    if (!b) return { erro: "Escolha quem fica bloqueado." };
+    barbeiroId = b.id;
+    filialId = b.filialId;
+  }
 
   if (!diaValido(diaInicio) || !diaValido(diaFim)) return { erro: "Informe as datas." };
   if (!/^\d{2}:\d{2}$/.test(horaInicio) || !/^\d{2}:\d{2}$/.test(horaFim)) return { erro: "Informe os horários." };
   const inicio = criarDataHora(diaInicio, horaInicio);
   const fim = criarDataHora(diaFim, horaFim);
   if (fim <= inicio) return { erro: "O fim precisa ser depois do início." };
-  if (barbeiroId && !(await db.barbeiro.findFirst({ where: { id: barbeiroId, barbeariaId: sessao.barbeariaId } })))
-    barbeiroId = null;
 
   await db.bloqueio.create({
-    data: { barbeariaId: sessao.barbeariaId, barbeiroId, inicio, fim, motivo: texto(form, "motivo") || null },
+    data: { barbeariaId: sessao.barbeariaId, barbeiroId, filialId, inicio, fim, motivo: texto(form, "motivo") || null },
   });
   revalidatePath("/painel", "layout");
   return { ok: "Bloqueio criado. Esses horários não aparecem mais para agendamento." };

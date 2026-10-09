@@ -60,12 +60,13 @@ async function montarItemServico(tx: Tx, comandaId: string, servicoId: string, b
 /** Abre uma comanda (opcionalmente a partir de um agendamento, já com o serviço). */
 export async function abrirComanda(params: {
   barbeariaId: string;
+  filialId?: string | null; // obrigatório quando não vem de um agendamento
   clienteId?: string | null;
   barbeiroId?: string | null;
   agendamentoId?: string | null;
 }) {
   return db.$transaction(async (tx) => {
-    let { clienteId = null, barbeiroId = null } = params;
+    let { clienteId = null, barbeiroId = null, filialId = null } = params;
     let servicos: { servicoId: string; barbeiroId: string }[] = [];
 
     if (params.agendamentoId) {
@@ -85,13 +86,17 @@ export async function abrirComanda(params: {
         : [ag];
       clienteId = ag.clienteId;
       barbeiroId = ag.barbeiroId;
+      filialId = ag.filialId;
       servicos = doGrupo.map((a) => ({ servicoId: a.servicoId, barbeiroId: a.barbeiroId }));
     }
 
-    const caixa = await tx.caixa.findFirst({ where: { barbeariaId: params.barbeariaId, fechadoEm: null } });
+    if (!filialId && barbeiroId) filialId = (await tx.barbeiro.findUnique({ where: { id: barbeiroId } }))?.filialId ?? null;
+    if (!filialId) throw new ErroComanda("Escolha a unidade da comanda.");
+    const caixa = await tx.caixa.findFirst({ where: { filialId, fechadoEm: null } });
     const comanda = await tx.comanda.create({
       data: {
         barbeariaId: params.barbeariaId,
+        filialId,
         clienteId,
         barbeiroId,
         agendamentoId: params.agendamentoId ?? null,
@@ -208,7 +213,7 @@ export async function fecharComanda(
         data: { status: "CONCLUIDO", formaPagamento: total > 0 ? opcoes.formaPagamento : null },
       });
     }
-    const caixa = await tx.caixa.findFirst({ where: { barbeariaId, fechadoEm: null } });
+    const caixa = await tx.caixa.findFirst({ where: { filialId: comanda.filialId, fechadoEm: null } });
     return tx.comanda.update({
       where: { id: comandaId },
       data: {

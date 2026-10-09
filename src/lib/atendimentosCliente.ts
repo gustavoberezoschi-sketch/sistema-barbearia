@@ -14,11 +14,13 @@ export async function atendimentosDoCliente(clienteId: string, filtro: "futuros"
         ? { fim: { gte: agora }, status: { in: ["AGENDADO", "CONFIRMADO"] } }
         : { OR: [{ fim: { lt: agora } }, { status: { in: ["CONCLUIDO", "CANCELADO", "FALTOU"] } }] }),
     },
-    include: { servico: true, barbeiro: true, comanda: true },
+    include: { servico: true, barbeiro: true, comanda: true, filial: { select: { nome: true } } },
     orderBy: { inicio: filtro === "futuros" ? "asc" : "desc" },
     take: limite * 3,
   });
   const plano = filtro === "futuros" ? await planoDoCliente(clienteId) : null;
+  const cliente = await db.cliente.findUniqueOrThrow({ where: { id: clienteId }, select: { barbeariaId: true } });
+  const variasUnidades = (await db.filial.count({ where: { barbeariaId: cliente.barbeariaId, ativo: true } })) > 1;
   let restantes = plano?.restantes ?? Infinity;
 
   const grupos = new Map<string, typeof ags>();
@@ -41,6 +43,7 @@ export async function atendimentosDoCliente(clienteId: string, filtro: "futuros"
       inicio: itens[0].inicio,
       servicos: itens.map((i) => i.servico.nome),
       barbeiro: itens[0].barbeiro.nome,
+      unidade: variasUnidades ? itens[0].filial.nome : null,
       total,
       status: itens[0].status,
     };

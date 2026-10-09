@@ -7,6 +7,7 @@ import { Cabecalho, Etiqueta, Indicador, Secao } from "@/components/ui";
 import { exigirGestor } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NOME_FORMA, formatarDinheiro, formatarTelefone, linkWhatsApp } from "@/lib/formato";
+import { filialDoPainel } from "@/lib/filial";
 import { enderecoDoSite } from "@/lib/site";
 import { diaLocal, formatarDataHora, formatarDia } from "@/lib/tempo";
 import { definirSenhaDoApp, salvarCliente } from "../../actions";
@@ -24,7 +25,8 @@ const STATUS: Record<string, { r: string; t: "latao" | "azul" | "verde" | "neutr
 };
 
 export default async function Cliente({ params }: { params: Promise<{ id: string }> }) {
-  const { barbeariaId } = await exigirGestor();
+  const sessao = await exigirGestor();
+  const { barbeariaId } = sessao;
   const id = (await params).id;
   if (id === "novo") return <FormCliente />;
 
@@ -39,6 +41,7 @@ export default async function Cliente({ params }: { params: Promise<{ id: string
   });
   if (!c) notFound();
   const site = await enderecoDoSite();
+  const ctx = await filialDoPainel(sessao);
 
   const gasto = c.comandas.reduce((s, x) => s + x.totalCentavos, 0);
   const visitas = c.comandas.length;
@@ -68,6 +71,7 @@ export default async function Cliente({ params }: { params: Promise<{ id: string
             </a>
             <FormAcao acao={novaComanda}>
               <input type="hidden" name="clienteId" value={c.id} />
+              <input type="hidden" name="filialId" value={ctx.atual?.id ?? ctx.filiais.find((f) => f.ativo)?.id ?? ""} />
               <button className="btn-secundario"><ReceiptText className="size-4" /> Nova comanda</button>
             </FormAcao>
             <Link href={`/painel/agenda/novo?cliente=${c.id}`} className="btn-destaque"><CalendarDays className="size-4" /> Agendar</Link>

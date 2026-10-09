@@ -4,6 +4,7 @@ import { KeyRound, Plus, UsersRound } from "lucide-react";
 import { Avatar, Cabecalho, Etiqueta, Vazio } from "@/components/ui";
 import { exigirGestor } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { filialDoPainel, naFilial } from "@/lib/filial";
 import { formatarDinheiro, formatarTelefone } from "@/lib/formato";
 import { criarDataHora, diaLocal, limitesDoMes, somarDias } from "@/lib/tempo";
 
@@ -11,10 +12,12 @@ export const metadata: Metadata = { title: "Equipe" };
 export const dynamic = "force-dynamic";
 
 export default async function Equipe() {
-  const { barbeariaId } = await exigirGestor();
+  const sessao = await exigirGestor();
+  const { barbeariaId } = sessao;
+  const ctx = await filialDoPainel(sessao);
   const mes = limitesDoMes(diaLocal());
   const [barbeiros, itens] = await Promise.all([
-    db.barbeiro.findMany({ where: { barbeariaId }, include: { usuario: true, servicos: true }, orderBy: [{ ativo: "desc" }, { nome: "asc" }] }),
+    db.barbeiro.findMany({ where: { barbeariaId, ...naFilial(ctx) }, include: { usuario: true, servicos: true, filial: true }, orderBy: [{ ativo: "desc" }, { nome: "asc" }] }),
     db.comandaItem.findMany({
       where: {
         comanda: { barbeariaId, status: "FECHADA", fechadaEm: { gte: criarDataHora(mes.inicio, "00:00"), lt: criarDataHora(somarDias(mes.fim, 1), "00:00") } },
@@ -49,7 +52,10 @@ export default async function Equipe() {
                   <Avatar nome={b.nome} foto={b.foto} tamanho={56} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-display text-lg font-bold group-hover:text-latao-700">{b.nome}</p>
-                    <p className="text-sm text-couro-400">{b.telefone ? formatarTelefone(b.telefone) : "Sem telefone"}</p>
+                    <p className="text-sm text-couro-400">
+                      {ctx.filiais.length > 1 && `${b.filial.nome} · `}
+                      {b.telefone ? formatarTelefone(b.telefone) : "Sem telefone"}
+                    </p>
                   </div>
                   {!b.ativo ? <Etiqueta>Inativo</Etiqueta> : b.usuario && <Etiqueta tom="azul"><KeyRound className="mr-1 size-3" /> Tem acesso</Etiqueta>}
                 </div>

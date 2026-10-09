@@ -8,14 +8,13 @@ import { exigirGestor } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatarTelefone } from "@/lib/formato";
 import { enderecoDoSite } from "@/lib/site";
-import { NOMES_DIAS } from "@/lib/tempo";
 import { alterarMinhaSenha, salvarConfiguracoes } from "../actions";
 
 export const metadata: Metadata = { title: "Configurações" };
 
 export default async function Configuracoes() {
   const { barbeariaId } = await exigirGestor();
-  const b = await db.barbearia.findUniqueOrThrow({ where: { id: barbeariaId }, include: { horarios: true } });
+  const b = await db.barbearia.findUniqueOrThrow({ where: { id: barbeariaId } });
   const link = `${await enderecoDoSite()}/b/${b.slug}`;
 
   return (
@@ -58,20 +57,8 @@ export default async function Configuracoes() {
 
         <div className="space-y-4">
           <Secao titulo="Horário de funcionamento">
-            <div className="space-y-2">
-              {NOMES_DIAS.map((nome, d) => {
-                const h = b.horarios.find((x) => x.diaSemana === d);
-                return (
-                  <div key={d} className="grid grid-cols-[7.5rem_1fr_1fr] items-center gap-2">
-                    <label className="flex items-center gap-2 text-sm font-medium">
-                      <input type="checkbox" name={`aberto_${d}`} defaultChecked={!!h} /> {nome}
-                    </label>
-                    <input type="time" name={`abre_${d}`} className="input py-2" defaultValue={h?.abre ?? "09:00"} aria-label={`${nome}: abre`} />
-                    <input type="time" name={`fecha_${d}`} className="input py-2" defaultValue={h?.fecha ?? "19:00"} aria-label={`${nome}: fecha`} />
-                  </div>
-                );
-              })}
-            </div>
+            <p className="text-sm text-couro-400">Os horários ficam em cada unidade.</p>
+            <Link href="/painel/unidades" className="btn-secundario btn-pequeno mt-3">Editar horários das unidades</Link>
           </Secao>
 
           <Secao titulo="Regras">

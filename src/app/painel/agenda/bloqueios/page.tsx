@@ -4,6 +4,7 @@ import { FormAcao } from "@/components/FormAcao";
 import { Cabecalho, Secao, Vazio } from "@/components/ui";
 import { exigirSessao } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { filialDoPainel } from "@/lib/filial";
 import { diaLocal, diaValido, formatarDataHora } from "@/lib/tempo";
 import { criarBloqueio, removerBloqueio } from "../actions";
 
@@ -15,12 +16,20 @@ export default async function Bloqueios({ searchParams }: { searchParams: Promis
   const p = await searchParams;
   const dia = p.dia && diaValido(p.dia) ? p.dia : diaLocal();
   const meu = sessao.barbeiroId ? { barbeiroId: sessao.barbeiroId } : {};
+  const ctx = await filialDoPainel(sessao);
+  const ativas = ctx.filiais.filter((f) => f.ativo);
+  const daUnidade = ctx.atual
+    ? { OR: [{ filialId: ctx.atual.id }, { filialId: null }] }
+    : {};
 
   const [barbeiros, bloqueios] = await Promise.all([
-    db.barbeiro.findMany({ where: { barbeariaId: sessao.barbeariaId, ativo: true, ...(sessao.barbeiroId ? { id: sessao.barbeiroId } : {}) }, orderBy: { nome: "asc" } }),
+    db.barbeiro.findMany({
+      where: { barbeariaId: sessao.barbeariaId, ativo: true, ...(ctx.atual ? { filialId: ctx.atual.id } : {}), ...(sessao.barbeiroId ? { id: sessao.barbeiroId } : {}) },
+      orderBy: { nome: "asc" },
+    }),
     db.bloqueio.findMany({
-      where: { barbeariaId: sessao.barbeariaId, fim: { gte: new Date() }, ...meu },
-      include: { barbeiro: true },
+      where: { barbeariaId: sessao.barbeariaId, fim: { gte: new Date() }, ...meu, ...daUnidade },
+      include: { barbeiro: true, filial: true },
       orderBy: { inicio: "asc" },
     }),
   ]);
@@ -37,9 +46,12 @@ export default async function Bloqueios({ searchParams }: { searchParams: Promis
           <FormAcao acao={criarBloqueio} limparAoSalvar className="grid gap-3">
             {!sessao.barbeiroId && (
               <div>
-                <label className="label" htmlFor="barbeiroId">Quem</label>
-                <select id="barbeiroId" name="barbeiroId" className="input">
-                  <option value="">Barbearia inteira (feriado, reforma...)</option>
+                <label className="label" htmlFor="quem">Quem</label>
+                <select id="quem" name="quem" className="input" defaultValue={ctx.atual ? `filial:${ctx.atual.id}` : ativas.length > 1 ? "todas" : `filial:${ativas[0]?.id}`}>
+                  {ativas.length > 1 && <option value="todas">Todas as unidades (feriado...)</option>}
+                  {ativas.filter((f) => !ctx.atual || f.id === ctx.atual.id).map((f) => (
+                    <option key={f.id} value={`filial:${f.id}`}>{ativas.length > 1 ? `Unidade ${f.nome} inteira` : "Barbearia inteira (feriado, reforma...)"}</option>
+                  ))}
                   {barbeiros.map((b) => <option key={b.id} value={b.id}>{b.nome}</option>)}
                 </select>
               </div>
@@ -81,7 +93,7 @@ export default async function Bloqueios({ searchParams }: { searchParams: Promis
               {bloqueios.map((b) => (
                 <li key={b.id} className="flex items-center justify-between gap-3 py-3">
                   <div>
-                    <p className="font-semibold">{b.motivo || "Bloqueado"} · <span className="font-normal text-couro-400">{b.barbeiro?.nome ?? "Barbearia inteira"}</span></p>
+                    <p className="font-semibold">{b.motivo || "Bloqueado"} · <span className="font-normal text-couro-400">{b.barbeiro?.nome ?? (b.filial ? (ativas.length > 1 ? `Unidade ${b.filial.nome}` : "Barbearia inteira") : "Todas as unidades")}</span></p>
                     <p className="text-sm text-couro-400 tabular-nums">
                       {formatarDataHora(b.inicio)} até {formatarDataHora(b.fim)}
                     </p>

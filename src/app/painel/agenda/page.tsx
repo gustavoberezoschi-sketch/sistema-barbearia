@@ -4,6 +4,7 @@ import { CalendarOff, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Avatar, Cabecalho, Vazio } from "@/components/ui";
 import { exigirSessao } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { filialDoPainel, naFilial } from "@/lib/filial";
 import { formatarDinheiro } from "@/lib/formato";
 import {
   diaDaSemana,
@@ -43,19 +44,29 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<{
   const dia = parametro && diaValido(parametro) ? parametro : hoje;
   const { inicio, fim } = inicioEFimDoDia(dia);
   const soMeu = sessao.papel === "BARBEIRO" && sessao.barbeiroId ? { id: sessao.barbeiroId } : {};
+  const ctx = await filialDoPainel(sessao);
+  const varias = ctx.filiais.filter((f) => f.ativo).length > 1;
 
-  const [funcionamento, barbeiros, agendamentos, bloqueios] = await Promise.all([
-    db.horarioFuncionamento.findUnique({
-      where: { barbeariaId_diaSemana: { barbeariaId, diaSemana: diaDaSemana(dia) } },
+  const [horariosDoDia, barbeiros, agendamentos, bloqueios] = await Promise.all([
+    db.horarioFuncionamento.findMany({
+      where: { diaSemana: diaDaSemana(dia), filial: { barbeariaId, ativo: true, ...(ctx.atual ? { id: ctx.atual.id } : {}) } },
     }),
-    db.barbeiro.findMany({ where: { barbeariaId, ativo: true, ...soMeu }, orderBy: { nome: "asc" } }),
+    db.barbeiro.findMany({
+      where: { barbeariaId, ativo: true, ...naFilial(ctx), ...soMeu },
+      include: { filial: { select: { nome: true } } },
+      orderBy: [{ filial: { ordem: "asc" } }, { nome: "asc" }],
+    }),
     db.agendamento.findMany({
-      where: { barbeariaId, inicio: { gte: inicio, lt: fim }, status: { not: "CANCELADO" } },
+      where: { barbeariaId, ...naFilial(ctx), inicio: { gte: inicio, lt: fim }, status: { not: "CANCELADO" } },
       include: { cliente: true, servico: true },
       orderBy: { inicio: "asc" },
     }),
     db.bloqueio.findMany({ where: { barbeariaId, inicio: { lt: fim }, fim: { gt: inicio } } }),
   ]);
+  // Com "todas as unidades", a grade vai da abertura mais cedo ao fechamento mais tarde.
+  const funcionamento = horariosDoDia.length
+    ? { abre: horariosDoDia.map((h) => h.abre).sort()[0], fecha: horariosDoDia.map((h) => h.fecha).sort().at(-1)! }
+    : null;
 
   // Faixa de horário exibida: expediente do dia (ou 08h–20h se fechado), ampliada para caber tudo.
   let abre = funcionamento ? horaParaMinutos(funcionamento.abre) : 8 * 60;
@@ -84,7 +95,7 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<{
         titulo={<span className="inline-block first-letter:uppercase">{formatarDiaExtenso(dia)}</span>}
         descricao={
           funcionamento
-            ? `${agendamentos.length} atendimento(s) · ${formatarDinheiro(previsto)} previstos · aberto das ${funcionamento.abre} às ${funcionamento.fecha}`
+            ? `${ctx.atual && varias ? `${ctx.atual.nome} · ` : ""}${agendamentos.length} atendimento(s) · ${formatarDinheiro(previsto)} previstos · aberto das ${funcionamento.abre} às ${funcionamento.fecha}`
             : "Barbearia fechada neste dia"
         }
         acoes={
@@ -133,6 +144,7 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<{
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{b.nome}</p>
                   <p className="text-xs text-couro-400">
+                    {varias && !ctx.atual && `${b.filial.nome} · `}
                     {agendamentos.filter((a) => a.barbeiroId === b.id).length} atendimento(s)
                   </p>
                 </div>
@@ -166,7 +178,7 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<{
                 ))}
 
                 {bloqueios
-                  .filter((x) => x.barbeiroId === null || x.barbeiroId === b.id)
+                  .filter((x) => x.barbeiroId === b.id || (x.barbeiroId === null && (x.filialId === null || x.filialId === b.filialId)))
                   .map((x) => (
                     <div
                       key={x.id}

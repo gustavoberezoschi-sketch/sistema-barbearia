@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   CalendarDays,
+  Building2,
   ChartColumn,
   Crown,
   Landmark,
@@ -56,6 +57,7 @@ const GESTOR: Grupo[] = [
     titulo: "Gestão",
     itens: [
       { href: "/painel/financeiro", rotulo: "Financeiro", icone: Landmark },
+      { href: "/painel/unidades", rotulo: "Unidades", icone: Building2 },
       { href: "/painel/relatorios", rotulo: "Relatórios", icone: ChartColumn },
       { href: "/painel/configuracoes", rotulo: "Configurações", icone: Settings },
     ],
@@ -79,12 +81,18 @@ export function Menu({
   usuario,
   papel,
   sair,
+  filiais,
+  filialAtual,
+  trocarFilial,
 }: {
   barbearia: string;
   logo: string | null;
   usuario: string;
   papel: string;
   sair: () => Promise<void>;
+  filiais: { id: string; nome: string }[];
+  filialAtual: { id: string; nome: string } | null;
+  trocarFilial: (form: FormData) => Promise<void>;
 }) {
   const caminho = usePathname();
   const [aberto, setAberto] = useState(false);
@@ -109,6 +117,26 @@ export function Menu({
           <p className="text-xs text-couro-400">{papel === "BARBEIRO" ? "Barbeiro" : "Gestão"}</p>
         </div>
       </div>
+
+      {filiais.length > 1 && papel !== "BARBEIRO" && (
+        <form action={trocarFilial} className="mx-3 mb-4">
+          <label htmlFor="filial-menu" className="mb-1 block px-1 text-[10px] font-semibold tracking-[0.14em] text-couro-400 uppercase">Unidade</label>
+          <select
+            id="filial-menu"
+            name="filialId"
+            defaultValue={filialAtual?.id ?? ""}
+            key={filialAtual?.id ?? "todas"}
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
+            className="w-full cursor-pointer rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-semibold text-white outline-none focus:border-latao-500 [&>option]:text-tinta"
+          >
+            <option value="">Todas as unidades</option>
+            {filiais.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
+          </select>
+        </form>
+      )}
+      {papel === "BARBEIRO" && filialAtual && filiais.length > 1 && (
+        <p className="mx-6 mb-4 text-xs text-couro-400">Unidade {filialAtual.nome}</p>
+      )}
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4" aria-label="Menu principal">
         {grupos.map((g) => (
@@ -148,7 +176,10 @@ export function Menu({
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 bg-couro-900 lg:block">{conteudo}</aside>
 
       <div className="sticky top-0 z-30 flex items-center justify-between bg-couro-900 px-4 py-3 lg:hidden">
-        <p className="truncate font-display font-bold text-white">{barbearia}</p>
+        <p className="truncate font-display font-bold text-white">
+          {barbearia}
+          {filiais.length > 1 && <span className="ml-1.5 text-xs font-medium text-couro-300">· {filialAtual?.nome ?? "Todas"}</span>}
+        </p>
         <button onClick={() => setAberto(true)} className="rounded-lg p-2 text-white hover:bg-white/10" aria-label="Abrir menu">
           <IconeMenu className="size-5" />
         </button>

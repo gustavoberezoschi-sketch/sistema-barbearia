@@ -3,6 +3,7 @@ import { FormAcao } from "@/components/FormAcao";
 import { Cabecalho } from "@/components/ui";
 import { exigirSessao } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { filialDoPainel, naFilial } from "@/lib/filial";
 import { formatarDinheiro, formatarTelefone } from "@/lib/formato";
 import { diaLocal, diaValido } from "@/lib/tempo";
 import { criarAgendamento } from "../actions";
@@ -21,8 +22,9 @@ export default async function NovoAgendamento({
 
   const [barbeiros, servicos, clientes] = await Promise.all([
     db.barbeiro.findMany({
-      where: { barbeariaId, ativo: true, ...(sessao.barbeiroId ? { id: sessao.barbeiroId } : {}) },
-      orderBy: { nome: "asc" },
+      where: { barbeariaId, ativo: true, ...naFilial(await filialDoPainel(sessao)), ...(sessao.barbeiroId ? { id: sessao.barbeiroId } : {}) },
+      include: { filial: { select: { nome: true } } },
+      orderBy: [{ filial: { ordem: "asc" } }, { nome: "asc" }],
     }),
     db.servico.findMany({ where: { barbeariaId, ativo: true }, orderBy: [{ categoria: "asc" }, { nome: "asc" }] }),
     db.cliente.findMany({ where: { barbeariaId }, orderBy: { nome: "asc" }, select: { id: true, nome: true, telefone: true } }),
@@ -71,7 +73,7 @@ export default async function NovoAgendamento({
           <div className="sm:col-span-2">
             <label className="label" htmlFor="barbeiroId">Barbeiro</label>
             <select id="barbeiroId" name="barbeiroId" className="input" required defaultValue={p.barbeiro}>
-              {barbeiros.map((b) => <option key={b.id} value={b.id}>{b.nome}</option>)}
+              {barbeiros.map((b) => <option key={b.id} value={b.id}>{b.nome}{new Set(barbeiros.map((x) => x.filialId)).size > 1 ? ` · ${b.filial.nome}` : ""}</option>)}
             </select>
           </div>
           <div>

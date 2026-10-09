@@ -16,8 +16,8 @@ import {
 import { GraficoBarras } from "@/components/GraficoBarras";
 import { Avatar, Cabecalho, Etiqueta, Indicador, Secao, Vazio } from "@/components/ui";
 import { exigirSessao } from "@/lib/auth";
-import { caixaAberto } from "@/lib/caixa";
 import { db } from "@/lib/db";
+import { filialDoPainel, naFilial } from "@/lib/filial";
 import { formatarDinheiro, linkWhatsApp } from "@/lib/formato";
 import { criarDataHora, diaLocal, formatarDia, horaLocal, inicioEFimDoDia, limitesDoMes, somarDias, somarMeses } from "@/lib/tempo";
 
@@ -28,6 +28,9 @@ export default async function Inicio() {
   const sessao = await exigirSessao();
   if (sessao.papel === "BARBEIRO") redirect("/painel/agenda");
   const { barbeariaId } = sessao;
+  const ctx = await filialDoPainel(sessao);
+  const filtro = naFilial(ctx);
+  const ativas = ctx.filiais.filter((f) => f.ativo);
   const hoje = diaLocal();
   const { inicio: iniHoje, fim: fimHoje } = inicioEFimDoDia(hoje);
   const mes = limitesDoMes(hoje);
@@ -36,19 +39,19 @@ export default async function Inicio() {
   const ate = (dia: string) => criarDataHora(somarDias(dia, 1), "00:00");
   const de = (dia: string) => criarDataHora(dia, "00:00");
 
-  const [agendamentosHoje, comandasPeriodo, abertas, caixa, produtos, contas, assinaturasVencidas, clientes, barbearia] =
+  const [agendamentosHoje, comandasPeriodo, abertas, caixas, produtos, contas, assinaturasVencidas, clientes, barbearia] =
     await Promise.all([
       db.agendamento.findMany({
-        where: { barbeariaId, inicio: { gte: iniHoje, lt: fimHoje }, status: { not: "CANCELADO" } },
+        where: { barbeariaId, ...filtro, inicio: { gte: iniHoje, lt: fimHoje }, status: { not: "CANCELADO" } },
         include: { cliente: true, servico: true, barbeiro: true },
         orderBy: { inicio: "asc" },
       }),
       db.comanda.findMany({
-        where: { barbeariaId, status: "FECHADA", fechadaEm: { gte: de(mesPassado.inicio < iniGrafico ? mesPassado.inicio : iniGrafico), lt: fimHoje } },
+        where: { barbeariaId, ...filtro, status: "FECHADA", fechadaEm: { gte: de(mesPassado.inicio < iniGrafico ? mesPassado.inicio : iniGrafico), lt: fimHoje } },
         select: { totalCentavos: true, fechadaEm: true },
       }),
-      db.comanda.count({ where: { barbeariaId, status: "ABERTA" } }),
-      caixaAberto(barbeariaId),
+      db.comanda.count({ where: { barbeariaId, ...filtro, status: "ABERTA" } }),
+      db.caixa.findMany({ where: { barbeariaId, ...filtro, fechadoEm: null }, include: { filial: true } }),
       db.produto.findMany({ where: { barbeariaId, ativo: true }, select: { nome: true, estoque: true, estoqueMinimo: true } }),
       db.contaPagar.findMany({ where: { barbeariaId, pagoEm: null, vencimento: { lte: somarDias(hoje, 7) } }, orderBy: { vencimento: "asc" } }),
       db.assinatura.count({ where: { barbeariaId, status: "ATIVA", pagoAte: { lt: hoje } } }),
@@ -83,7 +86,7 @@ export default async function Inicio() {
     <div>
       <Cabecalho
         titulo={`${saudacao}, ${sessao.nome.split(" ")[0]}`}
-        descricao={`Resumo da ${barbearia.nome} hoje`}
+        descricao={`Resumo ${ctx.atual && ativas.length > 1 ? `da unidade ${ctx.atual.nome}` : ativas.length > 1 ? "de todas as unidades" : `da ${barbearia.nome}`} hoje`}
         acoes={
           <>
             <Link href="/painel/comandas/nova" className="btn-secundario">
@@ -139,18 +142,32 @@ export default async function Inicio() {
 
         <div className="space-y-4">
           <Secao titulo="Caixa">
-            {caixa ? (
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-couro-700">
-                  <Etiqueta tom="verde">Aberto</Etiqueta> desde {horaLocal(caixa.abertoEm)}
-                </p>
-                <Link href="/painel/caixa" className="btn-secundario btn-pequeno">Ver caixa</Link>
-              </div>
+            {ctx.atual ? (
+              caixas[0] ? (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-couro-700">
+                    <Etiqueta tom="verde">Aberto</Etiqueta> desde {horaLocal(caixas[0].abertoEm)}
+                  </p>
+                  <Link href="/painel/caixa" className="btn-secundario btn-pequeno">Ver caixa</Link>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-couro-400">O caixa de hoje ainda não foi aberto.</p>
+                  <Link href="/painel/caixa" className="btn-primario btn-pequeno"><Wallet className="size-3.5" /> Abrir caixa</Link>
+                </div>
+              )
             ) : (
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-couro-400">O caixa de hoje ainda não foi aberto.</p>
-                <Link href="/painel/caixa" className="btn-primario btn-pequeno"><Wallet className="size-3.5" /> Abrir caixa</Link>
-              </div>
+              <ul className="space-y-2 text-sm">
+                {ativas.map((f) => {
+                  const cx = caixas.find((c) => c.filialId === f.id);
+                  return (
+                    <li key={f.id} className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{f.nome}</span>
+                      {cx ? <Etiqueta tom="verde">Aberto desde {horaLocal(cx.abertoEm)}</Etiqueta> : <Etiqueta>Fechado</Etiqueta>}
+                    </li>
+                  );
+                })}
+              </ul>
             )}
             {abertas > 0 && (
               <Link href="/painel/comandas" className="mt-3 flex items-center justify-between rounded-xl bg-latao-50 px-3 py-2.5 text-sm font-medium text-latao-700">

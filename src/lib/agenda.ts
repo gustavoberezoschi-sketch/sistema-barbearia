@@ -18,6 +18,7 @@ export async function barbeirosQueFazem(
   servicoIds: string[],
   tx: Cliente = db,
   barbeiroId?: string | null,
+  filialId?: string | null,
 ) {
   const servicos = await tx.servico.findMany({
     where: { id: { in: servicoIds }, barbeariaId, ativo: true },
@@ -25,7 +26,7 @@ export async function barbeirosQueFazem(
   });
   if (servicos.length === 0 || servicos.length !== new Set(servicoIds).size) return { servicos: [], barbeiros: [] };
   const todos = await tx.barbeiro.findMany({
-    where: { barbeariaId, ativo: true, ...(barbeiroId ? { id: barbeiroId } : {}) },
+    where: { barbeariaId, ativo: true, ...(barbeiroId ? { id: barbeiroId } : {}), ...(filialId ? { filialId } : {}) },
     orderBy: { nome: "asc" },
   });
   const barbeiros = todos.filter((b) => servicos.every((s) => s.barbeiros.length === 0 || s.barbeiros.some((x) => x.id === b.id)));
@@ -35,21 +36,21 @@ export async function barbeirosQueFazem(
 }
 
 /**
- * Lista os horários livres de um dia para um ou mais serviços feitos em sequência.
- * Se barbeiroId for null, considera qualquer barbeiro que faça os serviços ("sem preferência").
+ * Lista os horários livres de um dia, numa unidade, para um ou mais serviços feitos em sequência.
+ * Se barbeiroId for null, considera qualquer barbeiro da unidade que faça os serviços ("sem preferência").
  */
 export async function horariosDisponiveis(
-  params: { barbeariaId: string; servicoIds: string[]; barbeiroId: string | null; dia: string },
+  params: { barbeariaId: string; filialId: string; servicoIds: string[]; barbeiroId: string | null; dia: string },
   tx: Cliente = db,
 ): Promise<Horario[]> {
-  const { barbeariaId, servicoIds, barbeiroId, dia } = params;
+  const { barbeariaId, filialId, servicoIds, barbeiroId, dia } = params;
 
   const [barbearia, funcionamento, { servicos, barbeiros }] = await Promise.all([
     tx.barbearia.findUnique({ where: { id: barbeariaId } }),
-    tx.horarioFuncionamento.findUnique({
-      where: { barbeariaId_diaSemana: { barbeariaId, diaSemana: diaDaSemana(dia) } },
+    tx.horarioFuncionamento.findFirst({
+      where: { filialId, diaSemana: diaDaSemana(dia), filial: { barbeariaId, ativo: true } },
     }),
-    barbeirosQueFazem(barbeariaId, servicoIds, tx, barbeiroId),
+    barbeirosQueFazem(barbeariaId, servicoIds, tx, barbeiroId, filialId),
   ]);
   if (!barbearia || !funcionamento || servicos.length === 0 || barbeiros.length === 0) return [];
   const duracaoMin = servicos.reduce((s, x) => s + x.duracaoMin, 0);
@@ -65,7 +66,7 @@ export async function horariosDisponiveis(
     tx.bloqueio.findMany({
       where: {
         barbeariaId,
-        OR: [{ barbeiroId: null }, { barbeiroId: { in: ids } }],
+        OR: [{ barbeiroId: null, filialId: null }, { barbeiroId: null, filialId }, { barbeiroId: { in: ids } }],
         inicio: { lt: fechamento },
         fim: { gt: abertura },
       },
@@ -104,7 +105,7 @@ export async function temConflito(
   tx: Cliente = db,
   ignorarId?: string,
 ): Promise<"agendamento" | "bloqueio" | null> {
-  const barbeiro = await tx.barbeiro.findUniqueOrThrow({ where: { id: barbeiroId }, select: { barbeariaId: true } });
+  const barbeiro = await tx.barbeiro.findUniqueOrThrow({ where: { id: barbeiroId }, select: { barbeariaId: true, filialId: true } });
   const [agendamento, bloqueio] = await Promise.all([
     tx.agendamento.findFirst({
       where: {
@@ -119,7 +120,7 @@ export async function temConflito(
     tx.bloqueio.findFirst({
       where: {
         barbeariaId: barbeiro.barbeariaId,
-        OR: [{ barbeiroId: null }, { barbeiroId }],
+        OR: [{ barbeiroId: null, filialId: null }, { barbeiroId: null, filialId: barbeiro.filialId }, { barbeiroId }],
         inicio: { lt: fim },
         fim: { gt: inicio },
       },
@@ -157,6 +158,7 @@ export async function comTravaDaAgenda<T>(barbeariaId: string, fn: (tx: Prisma.T
  */
 export async function reservarOnline(params: {
   barbeariaId: string;
+  filialId: string;
   servicoIds: string[];
   barbeiroId: string | null;
   dia: string;
@@ -184,6 +186,7 @@ export async function reservarOnline(params: {
         await tx.agendamento.create({
           data: {
             barbeariaId: params.barbeariaId,
+            filialId: params.filialId,
             barbeiroId,
             servicoId: servico.id,
             clienteId,

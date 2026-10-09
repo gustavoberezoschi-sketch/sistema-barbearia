@@ -21,7 +21,7 @@ export default async function MeuAgendamento({ params }: { params: Promise<{ slu
   const { slug, token } = await params;
   const ag = await db.agendamento.findFirst({
     where: { token, barbearia: { slug } },
-    include: { barbearia: true, servico: true, barbeiro: true, cliente: true },
+    include: { barbearia: true, servico: true, barbeiro: true, cliente: true, filial: true },
   });
   if (!ag) notFound();
   const grupo = ag.grupo
@@ -41,15 +41,20 @@ export default async function MeuAgendamento({ params }: { params: Promise<{ slu
           <p className="text-sm font-semibold" style={{ color: ativo ? undefined : "#c2412d" }}>{STATUS[ag.status]}</p>
           <p className="mt-1 text-lg font-semibold first-letter:uppercase">{formatarDiaExtenso(diaLocal(ag.inicio))}, às {horaLocal(ag.inicio)}</p>
           <p className="text-couro-700">{grupo.map((x) => x.servico.nome).join(" + ")} com {ag.barbeiro.nome} · {formatarDinheiro(total)}</p>
-          {ag.barbearia.endereco && <p className="mt-2 text-sm text-couro-400">{ag.barbearia.endereco}</p>}
+          {(ag.filial.endereco ?? ag.barbearia.endereco) && (
+            <p className="mt-2 text-sm text-couro-400">
+              {ag.filial.nome !== "Unidade principal" && `${ag.filial.nome} · `}
+              {ag.filial.endereco ?? ag.barbearia.endereco}
+            </p>
+          )}
         </div>
         {podeCancelar && <Cancelar slug={slug} token={token} />}
         {ativo && !podeCancelar && (
           <p className="mt-4 text-sm text-couro-400">Para cancelar ou remarcar agora, fale direto com a barbearia.</p>
         )}
         <div className="mt-4 grid gap-2">
-          {ag.barbearia.telefone && (
-            <a href={linkWhatsApp(ag.barbearia.telefone, `Olá! Sobre meu horário de ${formatarDiaExtenso(diaLocal(ag.inicio))} às ${horaLocal(ag.inicio)} (${ag.cliente.nome})...`)} target="_blank" className="btn-secundario">
+          {(ag.filial.telefone ?? ag.barbearia.telefone) && (
+            <a href={linkWhatsApp((ag.filial.telefone ?? ag.barbearia.telefone)!, `Olá! Sobre meu horário de ${formatarDiaExtenso(diaLocal(ag.inicio))} às ${horaLocal(ag.inicio)} (${ag.cliente.nome})...`)} target="_blank" className="btn-secundario">
               Falar com a barbearia
             </a>
           )}

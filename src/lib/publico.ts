@@ -25,23 +25,30 @@ export async function planoDoCliente(clienteId: string) {
   };
 }
 
+/** Unidades ativas com os dias em que dá para agendar (até a antecedência máxima). */
+export function diasAbertos(horarios: { diaSemana: number }[], antecedenciaDias: number) {
+  const abertos = new Set(horarios.map((h) => h.diaSemana));
+  const hoje = diaLocal();
+  return Array.from({ length: antecedenciaDias + 1 }, (_, i) => somarDias(hoje, i)).filter((d) => abertos.has(diaDaSemana(d)));
+}
+
 /** Dados para montar o agendamento online. */
 export async function dadosDoAgendamento(slug: string) {
   const b = await db.barbearia.findUnique({
     where: { slug },
     include: {
-      horarios: true,
+      filiais: { where: { ativo: true }, include: { horarios: true }, orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }] },
       servicos: { where: { ativo: true, exibirOnline: true }, include: { barbeiros: { select: { id: true } } }, orderBy: [{ categoria: "asc" }, { precoCentavos: "asc" }] },
-      barbeiros: { where: { ativo: true }, orderBy: [{ destaque: "desc" }, { nome: "asc" }] },
+      barbeiros: { where: { ativo: true, filial: { ativo: true } }, orderBy: [{ destaque: "desc" }, { nome: "asc" }] },
     },
   });
   if (!b) return null;
-  const abertos = new Set(b.horarios.map((h) => h.diaSemana));
-  const hoje = diaLocal();
-  const dias = Array.from({ length: b.antecedenciaDias + 1 }, (_, i) => somarDias(hoje, i)).filter((d) => abertos.has(diaDaSemana(d)));
+  const filiais = b.filiais
+    .map((f) => ({ id: f.id, nome: f.nome, endereco: f.endereco, dias: diasAbertos(f.horarios, b.antecedenciaDias) }))
+    .filter((f) => f.dias.length > 0 && b.barbeiros.some((x) => x.filialId === f.id));
   return {
     barbearia: b,
-    dias,
+    filiais,
     servicos: b.servicos.map((s) => ({
       id: s.id,
       nome: s.nome,
@@ -52,6 +59,6 @@ export async function dadosDoAgendamento(slug: string) {
       duracaoMin: s.duracaoMin,
       barbeiroIds: s.barbeiros.map((x) => x.id),
     })),
-    barbeiros: b.barbeiros.map((x) => ({ id: x.id, nome: x.nome, foto: x.foto, destaque: x.destaque, bio: x.bio })),
+    barbeiros: b.barbeiros.map((x) => ({ id: x.id, nome: x.nome, foto: x.foto, destaque: x.destaque, bio: x.bio, filialId: x.filialId })),
   };
 }

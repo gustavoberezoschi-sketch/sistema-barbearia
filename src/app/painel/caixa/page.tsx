@@ -6,8 +6,10 @@ import { Cabecalho, Etiqueta, Indicador, Secao } from "@/components/ui";
 import { exigirGestor } from "@/lib/auth";
 import { caixaAberto, resumoDoCaixa } from "@/lib/caixa";
 import { db } from "@/lib/db";
+import { filialDoPainel } from "@/lib/filial";
 import { NOME_FORMA, formatarDinheiro } from "@/lib/formato";
 import { formatarDataHora, horaLocal } from "@/lib/tempo";
+import { trocarFilial } from "../unidades/actions";
 import { abrirCaixa, fecharCaixa, lancarMovimento } from "./actions";
 
 export const metadata: Metadata = { title: "Caixa" };
@@ -16,17 +18,50 @@ export const dynamic = "force-dynamic";
 const TIPOS = { SUPRIMENTO: "Suprimento (entrada de troco)", SANGRIA: "Sangria (retirada)", DESPESA: "Despesa paga do caixa" };
 
 export default async function Caixa({ searchParams }: { searchParams: Promise<{ id?: string; fechado?: string }> }) {
-  const { barbeariaId } = await exigirGestor();
+  const sessao = await exigirGestor();
+  const { barbeariaId } = sessao;
   const p = await searchParams;
-  const aberto = await caixaAberto(barbeariaId);
+  const ctx = await filialDoPainel(sessao);
+
+  // Com "todas as unidades", o caixa pede para escolher qual unidade abrir.
+  if (!ctx.atual && !p.id) {
+    const ativas = ctx.filiais.filter((f) => f.ativo);
+    const abertos = await db.caixa.findMany({ where: { barbeariaId, fechadoEm: null }, select: { filialId: true, abertoEm: true } });
+    return (
+      <div>
+        <Cabecalho titulo="Caixa" descricao="Cada unidade tem o próprio caixa. Escolha a unidade." />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {ativas.map((f) => {
+            const cx = abertos.find((c) => c.filialId === f.id);
+            return (
+              <form key={f.id} action={trocarFilial} className="card">
+                <input type="hidden" name="filialId" value={f.id} />
+                <p className="font-display text-lg font-bold">{f.nome}</p>
+                <p className="mt-1 text-sm text-couro-400">{cx ? `Caixa aberto desde ${horaLocal(cx.abertoEm)}` : "Caixa fechado"}</p>
+                <button className="btn-primario btn-pequeno mt-4"><Wallet className="size-3.5" /> Ir para o caixa</button>
+              </form>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const aberto = ctx.atual ? await caixaAberto(barbeariaId, ctx.atual.id) : null;
   const verId = p.id ?? aberto?.id;
-  const selecionado = verId ? await db.caixa.findFirst({ where: { id: verId, barbeariaId } }) : null;
+  const selecionado = verId ? await db.caixa.findFirst({ where: { id: verId, barbeariaId }, include: { filial: true } }) : null;
   const resumo = selecionado ? await resumoDoCaixa(selecionado.id) : null;
-  const historico = await db.caixa.findMany({ where: { barbeariaId, fechadoEm: { not: null } }, orderBy: { abertoEm: "desc" }, take: 15 });
+  const historico = await db.caixa.findMany({
+    where: { barbeariaId, fechadoEm: { not: null }, ...(ctx.atual ? { filialId: ctx.atual.id } : {}) },
+    include: { filial: true },
+    orderBy: { abertoEm: "desc" },
+    take: 15,
+  });
+  const varias = ctx.filiais.filter((f) => f.ativo).length > 1;
 
   return (
     <div>
-      <Cabecalho titulo="Caixa" descricao="Abertura, entradas, retiradas e fechamento do dia." />
+      <Cabecalho titulo={varias ? `Caixa · ${selecionado?.filial.nome ?? ctx.atual?.nome}` : "Caixa"} descricao="Abertura, entradas, retiradas e fechamento do dia." />
 
       {!aberto && !p.id && (
         <Secao titulo="Abrir o caixa" className="mb-6 max-w-lg">
@@ -158,7 +193,7 @@ export default async function Caixa({ searchParams }: { searchParams: Promise<{ 
             {historico.map((c) => (
               <li key={c.id}>
                 <Link href={`/painel/caixa?id=${c.id}`} className="flex justify-between py-2.5 hover:text-latao-700">
-                  <span>{formatarDataHora(c.abertoEm)} até {c.fechadoEm ? formatarDataHora(c.fechadoEm) : ""}</span>
+                  <span>{varias && `${c.filial.nome} · `}{formatarDataHora(c.abertoEm)} até {c.fechadoEm ? formatarDataHora(c.fechadoEm) : ""}</span>
                   <span className="font-semibold">Ver</span>
                 </Link>
               </li>

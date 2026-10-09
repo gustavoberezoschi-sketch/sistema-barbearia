@@ -5,6 +5,7 @@ import { FotoUpload } from "@/components/FotoUpload";
 import { Cabecalho, Secao } from "@/components/ui";
 import { exigirGestor } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { filialDoPainel } from "@/lib/filial";
 import { formatarTelefone } from "@/lib/formato";
 import { alternarBarbeiro, salvarBarbeiro } from "../../actions";
 
@@ -12,8 +13,10 @@ export const metadata: Metadata = { title: "Barbeiro" };
 export const dynamic = "force-dynamic";
 
 export default async function Barbeiro({ params }: { params: Promise<{ id: string }> }) {
-  const { barbeariaId } = await exigirGestor();
+  const sessao = await exigirGestor();
+  const { barbeariaId } = sessao;
   const id = (await params).id;
+  const { filiais, atual } = await filialDoPainel(sessao);
   const b = id === "novo" ? null : await db.barbeiro.findFirst({ where: { id, barbeariaId }, include: { usuario: true } });
   if (id !== "novo" && !b) notFound();
 
@@ -37,6 +40,16 @@ export default async function Barbeiro({ params }: { params: Promise<{ id: strin
           <div className="grid gap-4">
             <FotoUpload nome="foto" inicial={b?.foto} formato="redondo" rotulo="Foto (aparece para o cliente)" tamanho={240} />
             <div><label className="label" htmlFor="nome">Nome</label><input id="nome" name="nome" defaultValue={b?.nome} className="input" required /></div>
+            {filiais.length > 1 ? (
+              <div>
+                <label className="label" htmlFor="filialId">Unidade</label>
+                <select id="filialId" name="filialId" defaultValue={b?.filialId ?? atual?.id ?? filiais[0].id} className="input">
+                  {filiais.map((f) => <option key={f.id} value={f.id}>{f.nome}{f.ativo ? "" : " (inativa)"}</option>)}
+                </select>
+              </div>
+            ) : (
+              <input type="hidden" name="filialId" value={b?.filialId ?? filiais[0]?.id} />
+            )}
             <div><label className="label" htmlFor="telefone">WhatsApp</label><input id="telefone" name="telefone" defaultValue={b?.telefone ? formatarTelefone(b.telefone) : ""} className="input" inputMode="tel" /></div>
             <div><label className="label" htmlFor="bio">Apresentação curta</label><input id="bio" name="bio" defaultValue={b?.bio ?? ""} className="input" placeholder="Ex.: especialista em degradê e barba" /></div>
             <label className="flex items-start gap-2 text-sm">

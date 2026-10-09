@@ -26,9 +26,9 @@ export default async function PaginaPublica({ params }: Props) {
   const b = await db.barbearia.findUnique({
     where: { slug },
     include: {
-      horarios: { orderBy: { diaSemana: "asc" } },
+      filiais: { where: { ativo: true }, include: { horarios: true }, orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }] },
       servicos: { where: { ativo: true, exibirOnline: true }, orderBy: [{ categoria: "asc" }, { precoCentavos: "asc" }] },
-      barbeiros: { where: { ativo: true }, orderBy: [{ destaque: "desc" }, { nome: "asc" }] },
+      barbeiros: { where: { ativo: true, filial: { ativo: true } }, include: { filial: { select: { nome: true } } }, orderBy: [{ destaque: "desc" }, { nome: "asc" }] },
       planos: { where: { ativo: true, exibirOnline: true }, include: { servicos: { select: { nome: true } } }, orderBy: { precoCentavos: "asc" } },
       banners: { orderBy: { ordem: "asc" } },
     },
@@ -36,9 +36,13 @@ export default async function PaginaPublica({ params }: Props) {
   if (!b) notFound();
 
   const hoje = diaLocal();
-  const hojeHorario = b.horarios.find((h) => h.diaSemana === diaDaSemana(hoje));
   const agora = horaLocal(new Date());
-  const abertoAgora = !!hojeHorario && agora >= hojeHorario.abre && agora < hojeHorario.fecha;
+  const variasFiliais = b.filiais.length > 1;
+  // Status "aberto agora" considera a unidade principal (ou qualquer uma aberta, se houver várias).
+  const hojeDe = (f: (typeof b.filiais)[number]) => f.horarios.find((h) => h.diaSemana === diaDaSemana(hoje));
+  const abertas = b.filiais.filter((f) => { const h = hojeDe(f); return h && agora >= h.abre && agora < h.fecha; });
+  const hojeHorario = b.filiais[0] ? hojeDe(b.filiais[0]) : undefined;
+  const abertoAgora = abertas.length > 0;
   const cor = b.corDestaque;
   const categorias = [...new Set(b.servicos.map((s) => s.categoria))];
 
@@ -72,15 +76,17 @@ export default async function PaginaPublica({ params }: Props) {
                 <h1 className="font-display text-2xl leading-tight font-bold sm:text-3xl">{b.nome}</h1>
                 <p className="mt-1 flex items-center gap-1.5 text-sm">
                   <span className={`size-2 rounded-full ${abertoAgora ? "bg-emerald-500" : "bg-couro-300"}`} />
-                  {abertoAgora ? `Aberto agora · fecha às ${hojeHorario!.fecha}` : hojeHorario ? `Hoje das ${hojeHorario.abre} às ${hojeHorario.fecha}` : "Fechado hoje"}
+                  {variasFiliais
+                    ? `${b.filiais.length} unidades${abertoAgora ? ` · ${abertas.length} aberta(s) agora` : ""}`
+                    : abertoAgora ? `Aberto agora · fecha às ${hojeHorario!.fecha}` : hojeHorario ? `Hoje das ${hojeHorario.abre} às ${hojeHorario.fecha}` : "Fechado hoje"}
                 </p>
               </div>
             </div>
             {b.descricao && <p className="mt-4 text-[15px] leading-relaxed text-couro-700">{b.descricao}</p>}
             <div className="mt-4 flex flex-wrap gap-2 text-sm">
-              {b.endereco && (
-                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.endereco)}`} target="_blank" className="inline-flex items-center gap-1.5 rounded-full bg-fundo px-3 py-1.5 hover:bg-black/[0.06]">
-                  <MapPin className="size-4" /> {b.endereco}
+              {!variasFiliais && (b.filiais[0]?.endereco ?? b.endereco) && (
+                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.filiais[0]?.endereco ?? b.endereco ?? "")}`} target="_blank" className="inline-flex items-center gap-1.5 rounded-full bg-fundo px-3 py-1.5 hover:bg-black/[0.06]">
+                  <MapPin className="size-4" /> {b.filiais[0]?.endereco ?? b.endereco}
                 </a>
               )}
               {b.telefone && (
@@ -121,6 +127,7 @@ export default async function PaginaPublica({ params }: Props) {
                     )}
                   </div>
                   <p className="mt-1.5 text-sm leading-tight font-semibold">{x.nome}</p>
+                  {variasFiliais && <p className="text-xs text-couro-400">{x.filial.nome}</p>}
                 </div>
               ))}
             </div>
@@ -177,18 +184,37 @@ export default async function PaginaPublica({ params }: Props) {
         )}
 
         <section>
-          <h2 className="mb-3 flex items-center gap-2 font-display text-xl font-bold"><Clock className="size-5" /> Horários</h2>
-          <ul className="space-y-1.5 rounded-2xl bg-white p-4 text-sm shadow-sm">
-            {NOMES_DIAS.map((nome, d) => {
-              const h = b.horarios.find((x) => x.diaSemana === d);
-              return (
-                <li key={d} className={`flex justify-between ${d === diaDaSemana(hoje) ? "font-semibold" : ""}`}>
-                  <span>{nome}</span>
-                  <span className="tabular-nums text-couro-700">{h ? `${h.abre} às ${h.fecha}` : "Fechado"}</span>
-                </li>
-              );
-            })}
-          </ul>
+          <h2 className="mb-3 flex items-center gap-2 font-display text-xl font-bold">
+            {variasFiliais ? <><MapPin className="size-5" /> Unidades</> : <><Clock className="size-5" /> Horários</>}
+          </h2>
+          <div className={variasFiliais ? "grid gap-3 sm:grid-cols-2" : ""}>
+            {b.filiais.map((f) => (
+              <div key={f.id} className="rounded-2xl bg-white p-4 text-sm shadow-sm">
+                {variasFiliais && (
+                  <div className="mb-3">
+                    <p className="font-display text-base font-bold">{f.nome}</p>
+                    {f.endereco && (
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.endereco)}`} target="_blank" className="text-couro-400 underline">{f.endereco}</a>
+                    )}
+                    {f.telefone && (
+                      <a href={linkWhatsApp(f.telefone)} target="_blank" className="mt-1 flex items-center gap-1 font-medium"><MessageCircle className="size-3.5" /> WhatsApp da unidade</a>
+                    )}
+                  </div>
+                )}
+                <ul className="space-y-1.5">
+                  {NOMES_DIAS.map((nome, d) => {
+                    const h = f.horarios.find((x) => x.diaSemana === d);
+                    return (
+                      <li key={d} className={`flex justify-between ${d === diaDaSemana(hoje) ? "font-semibold" : ""}`}>
+                        <span>{nome}</span>
+                        <span className="tabular-nums text-couro-700">{h ? `${h.abre} às ${h.fecha}` : "Fechado"}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
         </section>
       </div>
 

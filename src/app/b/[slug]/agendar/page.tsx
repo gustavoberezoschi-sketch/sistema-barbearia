@@ -16,7 +16,7 @@ export default async function PaginaAgendar({ params }: { params: Promise<{ slug
   const { barbearia: b } = dados;
   const cliente = await clienteLogado(slug);
   const plano = cliente ? await planoDoCliente(cliente.id) : null;
-  const indisponivel = dados.servicos.length === 0 || dados.barbeiros.length === 0 || dados.dias.length === 0;
+  const indisponivel = dados.servicos.length === 0 || dados.filiais.length === 0;
 
   return (
     <main className="min-h-screen bg-[#f6f5f3]" style={estiloDaMarca(b.corDestaque)}>
@@ -44,7 +44,7 @@ export default async function PaginaAgendar({ params }: { params: Promise<{ slug
             telefoneBarbearia={b.telefone}
             servicos={dados.servicos}
             barbeiros={dados.barbeiros}
-            dias={dados.dias}
+            filiais={dados.filiais}
             cliente={cliente ? { nome: cliente.nome } : null}
             plano={plano ? { nome: plano.nome, servicoIds: plano.servicoIds, restantes: plano.restantes } : null}
           />

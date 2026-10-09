@@ -1,7 +1,7 @@
 import { db } from "./db";
 
-export async function caixaAberto(barbeariaId: string) {
-  return db.caixa.findFirst({ where: { barbeariaId, fechadoEm: null }, orderBy: { abertoEm: "desc" } });
+export async function caixaAberto(barbeariaId: string, filialId: string) {
+  return db.caixa.findFirst({ where: { barbeariaId, filialId, fechadoEm: null }, orderBy: { abertoEm: "desc" } });
 }
 
 export type ResumoCaixa = Awaited<ReturnType<typeof resumoDoCaixa>>;

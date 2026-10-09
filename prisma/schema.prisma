@@ -10,24 +10,24 @@ datasource db {
 
 // Cada barbearia cliente do sistema. Todos os outros dados pertencem a uma barbearia.
 model Barbearia {
-  id               String   @id @default(cuid())
-  nome             String
-  slug             String   @unique // usado na página pública: /b/<slug>
-  telefone         String?
-  endereco         String?
-  instagram        String?
-  descricao        String?
-  logo             String? // imagem (data URL) redimensionada no navegador
-  capa             String?
-  corDestaque      String   @default("#c9a14a")
-  intervaloMin     Int      @default(30) // de quanto em quanto tempo os horários são oferecidos
-  antecedenciaDias Int      @default(30) // até quantos dias à frente o cliente pode agendar
-  cancelamentoHoras Int     @default(2) // até quantas horas antes o cliente pode cancelar pelo link
-  cashbackPct      Int      @default(0) // % do valor pago que volta como crédito para o cliente
-  criadoEm         DateTime @default(now())
+  id                String   @id @default(cuid())
+  nome              String
+  slug              String   @unique // usado na página pública: /b/<slug>
+  telefone          String?
+  endereco          String?
+  instagram         String?
+  descricao         String?
+  logo              String? // imagem (data URL) redimensionada no navegador
+  capa              String?
+  corDestaque       String   @default("#c9a14a")
+  intervaloMin      Int      @default(30) // de quanto em quanto tempo os horários são oferecidos
+  antecedenciaDias  Int      @default(30) // até quantos dias à frente o cliente pode agendar
+  cancelamentoHoras Int      @default(2) // até quantas horas antes o cliente pode cancelar pelo link
+  cashbackPct       Int      @default(0) // % do valor pago que volta como crédito para o cliente
+  criadoEm          DateTime @default(now())
 
   usuarios     Usuario[]
-  horarios     HorarioFuncionamento[]
+  filiais      Filial[]
   barbeiros    Barbeiro[]
   servicos     Servico[]
   clientes     Cliente[]
@@ -43,15 +43,38 @@ model Barbearia {
   parceiros    Parceiro[]
 }
 
-model HorarioFuncionamento {
+// Unidade (filial) da barbearia: endereço, expediente, equipe, agenda e caixa próprios.
+// Clientes, serviços, planos, banners e parceiros são compartilhados por todas as unidades.
+model Filial {
   id          String    @id @default(cuid())
   barbeariaId String
   barbearia   Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
-  diaSemana   Int // 0 = domingo ... 6 = sábado
-  abre        String // "09:00"
-  fecha       String // "19:00"
+  nome        String
+  endereco    String?
+  telefone    String?
+  ativo       Boolean   @default(true)
+  ordem       Int       @default(0)
+  criadoEm    DateTime  @default(now())
 
-  @@unique([barbeariaId, diaSemana])
+  horarios     HorarioFuncionamento[]
+  barbeiros    Barbeiro[]
+  agendamentos Agendamento[]
+  comandas     Comanda[]
+  caixas       Caixa[]
+  bloqueios    Bloqueio[]
+
+  @@index([barbeariaId])
+}
+
+model HorarioFuncionamento {
+  id        String @id @default(cuid())
+  filialId  String
+  filial    Filial @relation(fields: [filialId], references: [id], onDelete: Cascade)
+  diaSemana Int // 0 = domingo ... 6 = sábado
+  abre      String // "09:00"
+  fecha     String // "19:00"
+
+  @@unique([filialId, diaSemana])
 }
 
 // Login do painel administrativo.
@@ -72,6 +95,8 @@ model Barbeiro {
   id                 String    @id @default(cuid())
   barbeariaId        String
   barbearia          Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  filialId           String
+  filial             Filial    @relation(fields: [filialId], references: [id], onDelete: NoAction)
   nome               String
   telefone           String?
   foto               String?
@@ -113,17 +138,17 @@ model Servico {
 }
 
 model Cliente {
-  id                     String    @id @default(cuid())
-  barbeariaId            String
-  barbearia              Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
-  nome                   String
-  telefone               String // só dígitos
-  email                  String?
-  nascimento             String? // "1990-05-21"
-  observacao             String?
-  saldoCashbackCentavos  Int       @default(0)
-  senhaHash              String? // acesso à área do cliente
-  criadoEm               DateTime  @default(now())
+  id                    String    @id @default(cuid())
+  barbeariaId           String
+  barbearia             Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  nome                  String
+  telefone              String // só dígitos
+  email                 String?
+  nascimento            String? // "1990-05-21"
+  observacao            String?
+  saldoCashbackCentavos Int       @default(0)
+  senhaHash             String? // acesso à área do cliente
+  criadoEm              DateTime  @default(now())
 
   agendamentos Agendamento[]
   comandas     Comanda[]
@@ -136,6 +161,8 @@ model Agendamento {
   id             String    @id @default(cuid())
   barbeariaId    String
   barbearia      Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  filialId       String
+  filial         Filial    @relation(fields: [filialId], references: [id], onDelete: NoAction)
   barbeiroId     String
   barbeiro       Barbeiro  @relation(fields: [barbeiroId], references: [id])
   servicoId      String
@@ -165,8 +192,10 @@ model Bloqueio {
   id          String    @id @default(cuid())
   barbeariaId String
   barbearia   Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
-  barbeiroId  String? // vazio = a barbearia inteira
+  barbeiroId  String? // vazio = a unidade inteira (ou todas, se filialId também estiver vazio)
   barbeiro    Barbeiro? @relation(fields: [barbeiroId], references: [id], onDelete: Cascade)
+  filialId    String?
+  filial      Filial?   @relation(fields: [filialId], references: [id], onDelete: Cascade)
   inicio      DateTime
   fim         DateTime
   motivo      String?
@@ -204,26 +233,28 @@ model MovimentoEstoque {
 
 // Conta do atendimento: serviços + produtos, desconto e forma de pagamento.
 model Comanda {
-  id                    String       @id @default(cuid())
-  numero                Int          @default(autoincrement())
-  barbeariaId           String
-  barbearia             Barbearia    @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
-  clienteId             String?
-  cliente               Cliente?     @relation(fields: [clienteId], references: [id])
-  barbeiroId            String?
-  barbeiro              Barbeiro?    @relation(fields: [barbeiroId], references: [id])
-  agendamentoId         String?      @unique
-  agendamento           Agendamento? @relation(fields: [agendamentoId], references: [id])
-  caixaId               String?
-  caixa                 Caixa?       @relation(fields: [caixaId], references: [id])
-  status                String       @default("ABERTA") // ABERTA | FECHADA | CANCELADA
-  descontoCentavos      Int          @default(0)
-  cashbackUsadoCentavos Int          @default(0)
-  cashbackGeradoCentavos Int         @default(0)
-  totalCentavos         Int          @default(0) // valor efetivamente pago
-  formaPagamento        String?
-  abertaEm              DateTime     @default(now())
-  fechadaEm             DateTime?
+  id                     String       @id @default(cuid())
+  numero                 Int          @default(autoincrement())
+  barbeariaId            String
+  barbearia              Barbearia    @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  filialId               String
+  filial                 Filial       @relation(fields: [filialId], references: [id], onDelete: NoAction)
+  clienteId              String?
+  cliente                Cliente?     @relation(fields: [clienteId], references: [id])
+  barbeiroId             String?
+  barbeiro               Barbeiro?    @relation(fields: [barbeiroId], references: [id])
+  agendamentoId          String?      @unique
+  agendamento            Agendamento? @relation(fields: [agendamentoId], references: [id])
+  caixaId                String?
+  caixa                  Caixa?       @relation(fields: [caixaId], references: [id])
+  status                 String       @default("ABERTA") // ABERTA | FECHADA | CANCELADA
+  descontoCentavos       Int          @default(0)
+  cashbackUsadoCentavos  Int          @default(0)
+  cashbackGeradoCentavos Int          @default(0)
+  totalCentavos          Int          @default(0) // valor efetivamente pago
+  formaPagamento         String?
+  abertaEm               DateTime     @default(now())
+  fechadaEm              DateTime?
 
   itens ComandaItem[]
 
@@ -249,14 +280,16 @@ model ComandaItem {
 }
 
 model Caixa {
-  id                     String    @id @default(cuid())
-  barbeariaId            String
-  barbearia              Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
-  abertoEm               DateTime  @default(now())
-  fechadoEm              DateTime?
-  saldoInicialCentavos   Int       @default(0)
+  id                      String    @id @default(cuid())
+  barbeariaId             String
+  barbearia               Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  filialId                String
+  filial                  Filial    @relation(fields: [filialId], references: [id], onDelete: NoAction)
+  abertoEm                DateTime  @default(now())
+  fechadoEm               DateTime?
+  saldoInicialCentavos    Int       @default(0)
   dinheiroContadoCentavos Int? // valor em dinheiro contado no fechamento
-  observacao             String?
+  observacao              String?
 
   movimentos MovimentoCaixa[]
   comandas   Comanda[]
@@ -264,13 +297,13 @@ model Caixa {
 }
 
 model MovimentoCaixa {
-  id             String   @id @default(cuid())
-  caixaId        String
-  caixa          Caixa    @relation(fields: [caixaId], references: [id], onDelete: Cascade)
-  tipo           String // SUPRIMENTO | SANGRIA | DESPESA
-  valorCentavos  Int
-  descricao      String
-  criadoEm       DateTime @default(now())
+  id            String   @id @default(cuid())
+  caixaId       String
+  caixa         Caixa    @relation(fields: [caixaId], references: [id], onDelete: Cascade)
+  tipo          String // SUPRIMENTO | SANGRIA | DESPESA
+  valorCentavos Int
+  descricao     String
+  criadoEm      DateTime @default(now())
 }
 
 // Clube de assinatura (ex.: corte ilimitado por R$ 99/mês).
@@ -291,17 +324,17 @@ model Plano {
 }
 
 model Assinatura {
-  id                String    @id @default(cuid())
-  barbeariaId       String
-  barbearia         Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
-  clienteId         String
-  cliente           Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  planoId           String
-  plano             Plano     @relation(fields: [planoId], references: [id])
-  status            String    @default("ATIVA") // ATIVA | CANCELADA
-  inicio            DateTime  @default(now())
-  pagoAte           String // "2026-11-09": cobertura vale até esse dia
-  criadoEm          DateTime  @default(now())
+  id          String    @id @default(cuid())
+  barbeariaId String
+  barbearia   Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  clienteId   String
+  cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  planoId     String
+  plano       Plano     @relation(fields: [planoId], references: [id])
+  status      String    @default("ATIVA") // ATIVA | CANCELADA
+  inicio      DateTime  @default(now())
+  pagoAte     String // "2026-11-09": cobertura vale até esse dia
+  criadoEm    DateTime  @default(now())
 
   pagamentos PagamentoAssinatura[]
 }

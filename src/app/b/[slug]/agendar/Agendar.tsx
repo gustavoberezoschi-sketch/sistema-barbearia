@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { CalendarCheck, CalendarPlus, Check, ChevronDown, Clock, Scissors, Star, UserRound } from "lucide-react";
+import { CalendarCheck, CalendarPlus, Check, ChevronDown, Clock, MapPin, Scissors, Star, Store, UserRound } from "lucide-react";
 import { formatarDinheiro, linkWhatsApp } from "@/lib/formato";
 import { FUSO, criarDataHora } from "@/lib/tempo";
 import { type Confirmacao, agendar, buscarHorarios } from "../actions";
@@ -17,7 +17,8 @@ export type ServicoOnline = {
   duracaoMin: number;
   barbeiroIds: string[];
 };
-export type BarbeiroOnline = { id: string; nome: string; foto: string | null; destaque: boolean; bio: string | null };
+export type BarbeiroOnline = { id: string; nome: string; foto: string | null; destaque: boolean; bio: string | null; filialId: string };
+export type FilialOnline = { id: string; nome: string; endereco: string | null; dias: string[] };
 export type Plano = { nome: string; servicoIds: string[]; restantes: number | null } | null;
 
 const SEM_PREFERENCIA = "";
@@ -39,8 +40,8 @@ export function Agendar({
   nomeBarbearia,
   telefoneBarbearia,
   servicos,
-  barbeiros,
-  dias,
+  barbeiros: todosBarbeiros,
+  filiais,
   cliente,
   plano,
 }: {
@@ -49,14 +50,19 @@ export function Agendar({
   telefoneBarbearia: string | null;
   servicos: ServicoOnline[];
   barbeiros: BarbeiroOnline[];
-  dias: string[];
+  filiais: FilialOnline[];
   cliente: { nome: string } | null;
   plano: Plano;
 }) {
-  const [aberta, setAberta] = useState(1);
+  const variasFiliais = filiais.length > 1;
+  const [filialId, setFilialId] = useState<string | null>(variasFiliais ? null : filiais[0]?.id ?? null);
+  const [aberta, setAberta] = useState(variasFiliais ? 0 : 1);
   const [barbeiroId, setBarbeiroId] = useState<string | null>(null);
   const [escolhidos, setEscolhidos] = useState<string[]>([]);
-  const [dia, setDia] = useState(dias[0]);
+  const filial = filiais.find((f) => f.id === filialId);
+  const dias = filial?.dias ?? [];
+  const barbeiros = todosBarbeiros.filter((b) => b.filialId === filialId);
+  const [dia, setDia] = useState(dias[0] ?? "");
   const [horarios, setHorarios] = useState<string[] | null>(null);
   const [hora, setHora] = useState<string | null>(null);
   const [nome, setNome] = useState("");
@@ -90,13 +96,23 @@ export function Agendar({
   }, []);
 
   useEffect(() => {
-    if (aberta !== 3 || escolhidos.length === 0 || barbeiroId === null) return;
+    if (aberta !== 3 || escolhidos.length === 0 || barbeiroId === null || !filialId) return;
     setHora(null);
     setHorarios(null);
     let vivo = true;
-    buscarHorarios(slug, escolhidos, barbeiroId || null, dia).then((h) => vivo && setHorarios(h));
+    buscarHorarios(slug, filialId, escolhidos, barbeiroId || null, dia).then((h) => vivo && setHorarios(h));
     return () => { vivo = false; };
-  }, [slug, escolhidos, barbeiroId, dia, aberta]);
+  }, [slug, filialId, escolhidos, barbeiroId, dia, aberta]);
+
+  function escolherFilial(f: FilialOnline) {
+    if (f.id !== filialId) {
+      setFilialId(f.id);
+      setBarbeiroId(null);
+      setHora(null);
+      setDia(f.dias[0]);
+    }
+    setAberta(1);
+  }
 
   function escolherBarbeiro(id: string) {
     setBarbeiroId(id);
@@ -109,10 +125,10 @@ export function Agendar({
   }
 
   function confirmar() {
-    if (!hora || barbeiroId === null) return;
+    if (!hora || barbeiroId === null || !filialId) return;
     setErro(null);
     iniciar(async () => {
-      const r = await agendar(slug, { servicoIds: escolhidos, barbeiroId: barbeiroId || null, dia, hora, ...(cliente ? {} : { nome, telefone, senha }) });
+      const r = await agendar(slug, { filialId, servicoIds: escolhidos, barbeiroId: barbeiroId || null, dia, hora, ...(cliente ? {} : { nome, telefone, senha }) });
       if (r.ok) {
         try { if (!cliente) localStorage.setItem("barbearia:contato", JSON.stringify({ nome, telefone })); } catch {}
         setConfirmado(r);
@@ -121,7 +137,7 @@ export function Agendar({
         setErro(r.erro);
         if (r.horarioOcupado) {
           setHora(null);
-          setHorarios(await buscarHorarios(slug, escolhidos, barbeiroId || null, dia));
+          setHorarios(await buscarHorarios(slug, filialId, escolhidos, barbeiroId || null, dia));
         }
       }
     });
@@ -137,6 +153,7 @@ export function Agendar({
         <h2 className="mt-4 font-display text-2xl font-bold">Horário marcado!</h2>
         <p className="mt-2 text-lg first-letter:uppercase">{r.dia}, às {r.hora}</p>
         <p className="text-couro-700">{r.servicos} com {r.barbeiro}</p>
+        {variasFiliais && filial && <p className="text-sm text-couro-400">{filial.nome}{filial.endereco ? ` · ${filial.endereco}` : ""}</p>}
         {confirmado.contaCriada && <p className="mt-3 rounded-xl bg-emerald-600/10 p-2 text-sm text-emerald-800">Sua conta foi criada. Você já está conectado.</p>}
         <div className="mt-6 grid gap-2 sm:grid-cols-2">
           <a href={linkGoogleAgenda(`${r.servicos} · ${nomeBarbearia}`, r.inicioISO, r.fimISO)} target="_blank" className="btn-secundario">
@@ -161,7 +178,23 @@ export function Agendar({
     <div className="space-y-3 pb-28">
       <p className="text-sm text-couro-700">Selecione os detalhes do seu agendamento</p>
 
-      <Etapa n={1} aberta={aberta === 1} feita={barbeiroId !== null} icone={UserRound} titulo="Selecione um profissional" resumo={barbeiroId === null ? null : barbeiro?.nome ?? "Sem preferência"} abrir={() => setAberta(1)}>
+      {variasFiliais && (
+        <Etapa n={0} aberta={aberta === 0} feita={!!filialId} icone={Store} titulo="Selecione a filial" resumo={filial?.nome ?? null} abrir={() => setAberta(0)}>
+          <div className="space-y-2">
+            {filiais.map((f) => (
+              <button key={f.id} onClick={() => escolherFilial(f)} aria-pressed={filialId === f.id} className={`flex w-full items-start gap-3 rounded-2xl border-2 p-4 text-left transition ${filialId === f.id ? "border-[var(--cor)] bg-[var(--cor)]/[0.06]" : "border-black/[0.06] bg-white hover:border-black/15"}`}>
+                <MapPin className="mt-0.5 size-5 shrink-0 text-[var(--cor)]" />
+                <span>
+                  <span className="block font-semibold">{f.nome}</span>
+                  {f.endereco && <span className="block text-sm text-couro-400">{f.endereco}</span>}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Etapa>
+      )}
+
+      <Etapa n={1} aberta={aberta === 1} feita={barbeiroId !== null} bloqueada={!filialId} icone={UserRound} titulo="Selecione um profissional" resumo={barbeiroId === null ? null : barbeiro?.nome ?? "Sem preferência"} abrir={() => filialId && setAberta(1)}>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
           {barbeiros.length > 1 && (
             <CartaoBarbeiro nome="Sem preferência" selecionado={barbeiroId === SEM_PREFERENCIA} onClick={() => escolherBarbeiro(SEM_PREFERENCIA)} />

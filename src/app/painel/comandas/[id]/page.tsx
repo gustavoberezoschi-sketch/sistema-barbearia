@@ -26,7 +26,7 @@ export default async function Comanda({ params }: { params: Promise<{ id: string
   const [servicos, produtos, barbeiros, assinatura] = await Promise.all([
     db.servico.findMany({ where: { barbeariaId: sessao.barbeariaId, ativo: true }, orderBy: [{ categoria: "asc" }, { nome: "asc" }] }),
     db.produto.findMany({ where: { barbeariaId: sessao.barbeariaId, ativo: true }, orderBy: { nome: "asc" } }),
-    db.barbeiro.findMany({ where: { barbeariaId: sessao.barbeariaId, ativo: true }, orderBy: { nome: "asc" } }),
+    db.barbeiro.findMany({ where: { barbeariaId: sessao.barbeariaId, filialId: comanda.filialId, ativo: true }, orderBy: { nome: "asc" } }),
     comanda.clienteId ? assinaturaVigente(comanda.clienteId) : null,
   ]);
   const subtotal = subtotalDosItens(comanda.itens);

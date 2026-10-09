@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GraficoBarras } from "@/components/GraficoBarras";
 import { Cabecalho, Indicador, Secao } from "@/components/ui";
 import { exigirSessao } from "@/lib/auth";
+import { filialDoPainel } from "@/lib/filial";
 import { NOME_FORMA, formatarDinheiro } from "@/lib/formato";
 import { numerosDoPeriodo } from "@/lib/relatorios";
 import { diaLocal, diaValido, formatarDia, somarDias } from "@/lib/tempo";
@@ -16,7 +17,9 @@ export default async function Relatorios({ searchParams }: { searchParams: Promi
   const de = p.de && diaValido(p.de) ? p.de : `${hoje.slice(0, 8)}01`;
   const ate = p.ate && diaValido(p.ate) && p.ate >= de ? p.ate : hoje;
   const barbeiro = sessao.barbeiroId;
-  const n = await numerosDoPeriodo(sessao.barbeariaId, de, ate, barbeiro);
+  const ctx = await filialDoPainel(sessao);
+  const varias = ctx.filiais.filter((f) => f.ativo).length > 1;
+  const n = await numerosDoPeriodo(sessao.barbeariaId, de, ate, barbeiro, barbeiro ? null : ctx.atual?.id);
 
   const dias: string[] = [];
   for (let d = de; d <= ate && dias.length < 62; d = somarDias(d, 1)) dias.push(d);
@@ -34,7 +37,7 @@ export default async function Relatorios({ searchParams }: { searchParams: Promi
     <div>
       <Cabecalho
         titulo={barbeiro ? "Minhas comissões" : "Relatórios"}
-        descricao={`De ${formatarDia(de)} a ${formatarDia(ate)}`}
+        descricao={`De ${formatarDia(de)} a ${formatarDia(ate)}${varias && !barbeiro ? ` · ${ctx.atual ? `unidade ${ctx.atual.nome}` : "todas as unidades"}` : ""}`}
         acoes={
           <form className="flex flex-wrap items-end gap-2">
             {atalhos.map((a) => (
@@ -68,6 +71,22 @@ export default async function Relatorios({ searchParams }: { searchParams: Promi
       {!barbeiro && (
         <Secao titulo="Faturamento por dia" className="mb-4">
           <GraficoBarras dados={grafico} titulo="Faturamento por dia no período" destacarUltimo={ate === hoje} />
+        </Secao>
+      )}
+
+      {varias && !barbeiro && !ctx.atual && n.porFilial.length > 0 && (
+        <Secao titulo="Por unidade" className="mb-4">
+          <ul className="space-y-3 text-sm">
+            {n.porFilial.map((f) => (
+              <li key={f.nome}>
+                <div className="mb-1 flex justify-between gap-2">
+                  <span className="font-semibold">{f.nome} <span className="font-normal text-couro-400">· {f.comandas} venda(s) · ticket {formatarDinheiro(Math.round(f.vendas / f.comandas))}</span></span>
+                  <span className="font-semibold tabular-nums">{formatarDinheiro(f.vendas)}</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-fundo"><div className="h-full rounded-full bg-latao-500" style={{ width: `${(f.vendas / Math.max(1, n.vendas)) * 100}%` }} /></div>
+              </li>
+            ))}
+          </ul>
         </Secao>
       )}
 

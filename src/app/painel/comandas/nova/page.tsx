@@ -3,6 +3,7 @@ import { FormAcao } from "@/components/FormAcao";
 import { Cabecalho } from "@/components/ui";
 import { exigirSessao } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { filialDoPainel } from "@/lib/filial";
 import { formatarTelefone } from "@/lib/formato";
 import { novaComanda } from "../actions";
 
@@ -10,9 +11,11 @@ export const metadata: Metadata = { title: "Nova comanda" };
 
 export default async function NovaComanda() {
   const sessao = await exigirSessao();
+  const ctx = await filialDoPainel(sessao);
+  const ativas = ctx.filiais.filter((f) => f.ativo);
   const [clientes, barbeiros] = await Promise.all([
     db.cliente.findMany({ where: { barbeariaId: sessao.barbeariaId }, orderBy: { nome: "asc" } }),
-    db.barbeiro.findMany({ where: { barbeariaId: sessao.barbeariaId, ativo: true }, orderBy: { nome: "asc" } }),
+    db.barbeiro.findMany({ where: { barbeariaId: sessao.barbeariaId, ativo: true, ...(ctx.atual ? { filialId: ctx.atual.id } : {}) }, orderBy: { nome: "asc" } }),
   ]);
   return (
     <div className="mx-auto max-w-xl">
@@ -25,6 +28,16 @@ export default async function NovaComanda() {
             {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome} · {formatarTelefone(c.telefone)}</option>)}
           </select>
         </div>
+        {ctx.atual ? (
+          <input type="hidden" name="filialId" value={ctx.atual.id} />
+        ) : (
+          <div>
+            <label className="label" htmlFor="filialId">Unidade</label>
+            <select id="filialId" name="filialId" className="input" required>
+              {ativas.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
+            </select>
+          </div>
+        )}
         {!sessao.barbeiroId && (
           <div>
             <label className="label" htmlFor="barbeiroId">Barbeiro responsável</label>

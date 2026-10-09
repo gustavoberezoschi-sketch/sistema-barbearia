@@ -2,17 +2,21 @@ import { db } from "./db";
 import { criarDataHora, somarDias } from "./tempo";
 
 /** Números de um período (dias inclusivos) a partir das comandas fechadas. */
-export async function numerosDoPeriodo(barbeariaId: string, de: string, ate: string, barbeiroId?: string | null) {
+export async function numerosDoPeriodo(barbeariaId: string, de: string, ate: string, barbeiroId?: string | null, filialId?: string | null) {
   const intervalo = { gte: criarDataHora(de, "00:00"), lt: criarDataHora(somarDias(ate, 1), "00:00") };
+  const naUnidade = filialId ? { filialId } : {};
   const [comandas, pagamentosPlano, despesasCaixa, contasPagas, agendamentos, novosClientes] = await Promise.all([
     db.comanda.findMany({
-      where: { barbeariaId, status: "FECHADA", fechadaEm: intervalo },
-      include: { itens: { include: { barbeiro: true } } },
+      where: { barbeariaId, ...naUnidade, status: "FECHADA", fechadaEm: intervalo },
+      include: { itens: { include: { barbeiro: true } }, filial: { select: { nome: true } } },
     }),
-    db.pagamentoAssinatura.findMany({ where: { assinatura: { barbeariaId }, pagoEm: intervalo }, include: { assinatura: { include: { plano: true } } } }),
-    db.movimentoCaixa.findMany({ where: { caixa: { barbeariaId }, tipo: "DESPESA", criadoEm: intervalo } }),
+    db.pagamentoAssinatura.findMany({
+      where: { assinatura: { barbeariaId }, pagoEm: intervalo, ...(filialId ? { caixa: { filialId } } : {}) },
+      include: { assinatura: { include: { plano: true } } },
+    }),
+    db.movimentoCaixa.findMany({ where: { caixa: { barbeariaId, ...naUnidade }, tipo: "DESPESA", criadoEm: intervalo } }),
     db.contaPagar.findMany({ where: { barbeariaId, pagoEm: intervalo } }),
-    db.agendamento.findMany({ where: { barbeariaId, inicio: intervalo, ...(barbeiroId ? { barbeiroId } : {}) }, select: { status: true, origem: true } }),
+    db.agendamento.findMany({ where: { barbeariaId, ...naUnidade, inicio: intervalo, ...(barbeiroId ? { barbeiroId } : {}) }, select: { status: true, origem: true } }),
     db.cliente.count({ where: { barbeariaId, criadoEm: intervalo } }),
   ]);
 
@@ -54,6 +58,14 @@ export async function numerosDoPeriodo(barbeariaId: string, de: string, ate: str
     porDia.set(d, (porDia.get(d) ?? 0) + c.totalCentavos);
   }
 
+  const porFilial = new Map<string, { nome: string; vendas: number; comandas: number }>();
+  for (const c of comandas) {
+    const f = porFilial.get(c.filialId) ?? { nome: c.filial.nome, vendas: 0, comandas: 0 };
+    f.vendas += c.totalCentavos;
+    f.comandas += 1;
+    porFilial.set(c.filialId, f);
+  }
+
   const vendas = comandas.reduce((s, c) => s + c.totalCentavos, 0);
   const assinaturas = pagamentosPlano.reduce((s, p) => s + p.valorCentavos, 0);
   const comissoes = [...porBarbeiro.values()].reduce((s, b) => s + b.comissao, 0);
@@ -78,6 +90,7 @@ export async function numerosDoPeriodo(barbeariaId: string, de: string, ate: str
     produtos: agrupar("PRODUTO"),
     porForma,
     porDia,
+    porFilial: [...porFilial.values()].sort((a, b) => b.vendas - a.vendas),
     contasPagas,
     despesasCaixa,
   };

@@ -5,6 +5,7 @@ import { Cabecalho, Etiqueta, Secao, Vazio } from "@/components/ui";
 import { exigirSessao } from "@/lib/auth";
 import { subtotalDosItens } from "@/lib/comandas";
 import { db } from "@/lib/db";
+import { filialDoPainel, naFilial } from "@/lib/filial";
 import { NOME_FORMA, formatarDinheiro } from "@/lib/formato";
 import { diaLocal, diaValido, formatarDia, horaLocal, inicioEFimDoDia } from "@/lib/tempo";
 
@@ -16,7 +17,7 @@ export default async function Comandas({ searchParams }: { searchParams: Promise
   const p = await searchParams;
   const dia = p.dia && diaValido(p.dia) ? p.dia : diaLocal();
   const { inicio, fim } = inicioEFimDoDia(dia);
-  const meu = sessao.barbeiroId ? { barbeiroId: sessao.barbeiroId } : {};
+  const meu = { ...(sessao.barbeiroId ? { barbeiroId: sessao.barbeiroId } : {}), ...naFilial(await filialDoPainel(sessao)) };
 
   const [abertas, fechadas] = await Promise.all([
     db.comanda.findMany({

@@ -34,7 +34,12 @@ export async function criarBarbearia(dados: {
     data: {
       nome,
       slug,
-      horarios: { create: [1, 2, 3, 4, 5, 6].map((diaSemana) => ({ diaSemana, abre: "09:00", fecha: "19:00" })) },
+      filiais: {
+        create: {
+          nome: "Unidade principal",
+          horarios: { create: [1, 2, 3, 4, 5, 6].map((diaSemana) => ({ diaSemana, abre: "09:00", fecha: "19:00" })) },
+        },
+      },
       usuarios: { create: { nome: dono, email, senhaHash: await bcrypt.hash(dados.senha, 10) } },
     },
   });

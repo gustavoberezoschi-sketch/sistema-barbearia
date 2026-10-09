@@ -13,8 +13,17 @@ function bannerSvg(fundo: string, destaque: string, titulo: string, sub: string)
 }
 
 const DEMOS = [
-  { nome: "Barbearia Navalha de Ouro", slug: "navalha-de-ouro", email: "dono@navalha.com", cor: "#c9a14a", barbeiros: ["Carlos Mendes", "Rafael Lima", "Diego Souza"] },
-  { nome: "Corte Forte Barber Shop", slug: "corte-forte", email: "dono@corteforte.com", cor: "#2f5d8a", barbeiros: ["Lucas Prado", "Mateus Rocha"] },
+  {
+    nome: "Barbearia Navalha de Ouro", slug: "navalha-de-ouro", email: "dono@navalha.com", cor: "#c9a14a",
+    filiais: [
+      { nome: "Centro", endereco: "Rua Augusta, 1200 - Consolação, São Paulo", barbeiros: ["Carlos Mendes", "Rafael Lima"] },
+      { nome: "Shopping Norte", endereco: "Av. Otto Baumgart, 500 - Loja 210, São Paulo", barbeiros: ["Diego Souza"] },
+    ],
+  },
+  {
+    nome: "Corte Forte Barber Shop", slug: "corte-forte", email: "dono@corteforte.com", cor: "#2f5d8a",
+    filiais: [{ nome: "Unidade principal", endereco: "Rua XV de Novembro, 300 - Centro", barbeiros: ["Lucas Prado", "Mateus Rocha"] }],
+  },
 ];
 
 const SERVICOS = [
@@ -63,9 +72,22 @@ async function main() {
         descricao: "Barbearia clássica com atendimento sem pressa, café passado na hora e cerveja gelada.",
         corDestaque: demo.cor,
         cashbackPct: 5,
-        horarios: { create: [1, 2, 3, 4, 5, 6].map((diaSemana) => ({ diaSemana, abre: "09:00", fecha: diaSemana === 6 ? "17:00" : "20:00" })) },
+        filiais: {
+          create: demo.filiais.map((f, i) => ({
+            nome: f.nome,
+            endereco: f.endereco,
+            ordem: i,
+            // A unidade do shopping abre também no domingo e fecha mais tarde
+            horarios: {
+              create: (i === 1 ? [0, 1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6]).map((diaSemana) => ({
+                diaSemana,
+                abre: i === 1 ? "10:00" : "09:00",
+                fecha: i === 1 ? "22:00" : diaSemana === 6 ? "17:00" : "20:00",
+              })),
+            },
+          })),
+        },
         usuarios: { create: { nome: "Roberto", email: demo.email, senhaHash } },
-        barbeiros: { create: demo.barbeiros.map((nome, i) => ({ nome, comissaoPct: i === 0 ? 50 : 45, destaque: i < 2 })) },
         banners: {
           create: [
             { imagem: bannerSvg("#1f1a17", demo.cor, "Corte + barba", "R$ 75 · toalha quente inclusa"), ordem: 0 },
@@ -82,20 +104,28 @@ async function main() {
         produtos: { create: PRODUTOS },
         clientes: { create: CLIENTES.map(([nome, telefone, nascimento], i) => ({ nome, telefone, nascimento, senhaHash: i === 0 ? senhaHash : null })) },
       },
-      include: { barbeiros: true, servicos: true, clientes: true, produtos: true },
+      include: { filiais: { orderBy: { ordem: "asc" } }, servicos: true, clientes: true, produtos: true },
     });
+    let ordem = 0;
+    for (const [i, f] of demo.filiais.entries()) {
+      for (const nome of f.barbeiros) {
+        await db.barbeiro.create({ data: { barbeariaId: b.id, filialId: b.filiais[i].id, nome, comissaoPct: ordem === 0 ? 50 : 45, destaque: ordem < 2 } });
+        ordem++;
+      }
+    }
+    const barbeiros = await db.barbeiro.findMany({ where: { barbeariaId: b.id }, orderBy: { criadoEm: "asc" } });
     const [s] = [b.servicos];
     const porNome = (nome: string) => s.find((x) => x.nome === nome)!;
 
     // Só o primeiro barbeiro faz luzes
-    await db.servico.update({ where: { id: porNome("Luzes").id }, data: { barbeiros: { connect: { id: b.barbeiros[0].id } } } });
+    await db.servico.update({ where: { id: porNome("Luzes").id }, data: { barbeiros: { connect: { id: barbeiros[0].id } } } });
 
     if (n === 0) {
-      await db.usuario.create({ data: { barbeariaId: b.id, barbeiroId: b.barbeiros[0].id, nome: "Carlos Mendes", email: "carlos@navalha.com", papel: "BARBEIRO", senhaHash } });
+      await db.usuario.create({ data: { barbeariaId: b.id, barbeiroId: barbeiros[0].id, nome: "Carlos Mendes", email: "carlos@navalha.com", papel: "BARBEIRO", senhaHash } });
     }
 
     // Almoço de todos os barbeiros hoje
-    for (const bb of b.barbeiros) {
+    for (const bb of barbeiros) {
       await db.bloqueio.create({ data: { barbeariaId: b.id, barbeiroId: bb.id, inicio: criarDataHora(hoje, "12:00"), fim: criarDataHora(hoje, "13:00"), motivo: "Almoço" } });
     }
 
@@ -130,14 +160,14 @@ async function main() {
       for (const [j, hora] of horas.entries()) {
         k++;
         const servico = comuns[(k + j) % comuns.length];
-        const barbeiro = b.barbeiros[(k + j) % b.barbeiros.length];
+        const barbeiro = barbeiros[(k + j) % barbeiros.length];
         const cliente = b.clientes[(k * 3 + j) % b.clientes.length];
         const inicio = criarDataHora(dia, hora);
         const passado = inicio.getTime() + servico.duracaoMin * 60_000 < Date.now();
         const falta = passado && k % 13 === 0;
         const ag = await db.agendamento.create({
           data: {
-            barbeariaId: b.id, barbeiroId: barbeiro.id, servicoId: servico.id, clienteId: cliente.id, inicio,
+            barbeariaId: b.id, filialId: barbeiro.filialId, barbeiroId: barbeiro.id, servicoId: servico.id, clienteId: cliente.id, inicio,
             fim: new Date(inicio.getTime() + servico.duracaoMin * 60_000), precoCentavos: servico.precoCentavos,
             origem: k % 3 === 0 ? "PAINEL" : "ONLINE", status: falta ? "FALTOU" : k % 4 === 0 && !passado ? "CONFIRMADO" : "AGENDADO",
           },
