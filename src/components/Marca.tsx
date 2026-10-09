@@ -4,11 +4,11 @@ export function Marca({ tamanho = "md", clara = false }: { tamanho?: "sm" | "md"
   const icone = { sm: "size-6 text-[11px] rounded-md", md: "size-9 text-base rounded-xl", lg: "size-12 text-xl rounded-2xl" }[tamanho];
   return (
     <span className="inline-flex items-center gap-2.5">
-      <span className={`grid shrink-0 place-items-center bg-latao-500 font-display font-extrabold text-couro-950 ${icone}`} aria-hidden>
+      <span className={`grid shrink-0 place-items-center font-display font-bold ${clara ? "bg-white text-tinta" : "bg-tinta text-white"} ${icone}`} aria-hidden>
         K
       </span>
       <span className={`font-display font-bold tracking-tight ${texto} ${clara ? "text-white" : "text-tinta"}`}>
-        Klareza<span className="text-latao-500">Barber</span>
+        Klareza<span className={clara ? "text-verde-claro" : "text-latao-500"}>Barber</span>
       </span>
     </span>
   );

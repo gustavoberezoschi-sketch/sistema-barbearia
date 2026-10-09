@@ -202,7 +202,7 @@ export async function salvarConfiguracoes(_: Resultado, form: FormData): Promise
         descricao: texto(form, "descricao") || null,
         logo: imagem(form, "logo"),
         capa: imagem(form, "capa"),
-        corDestaque: /^#[0-9a-fA-F]{6}$/.test(cor) ? cor : "#c9a14a",
+        corDestaque: /^#[0-9a-fA-F]{6}$/.test(cor) ? cor : "#145c3c",
         intervaloMin,
         antecedenciaDias,
         cancelamentoHoras,

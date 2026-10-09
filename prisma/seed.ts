@@ -14,7 +14,7 @@ function bannerSvg(fundo: string, destaque: string, titulo: string, sub: string)
 
 const DEMOS = [
   {
-    nome: "Barbearia Navalha de Ouro", slug: "navalha-de-ouro", email: "dono@navalha.com", cor: "#c9a14a",
+    nome: "Barbearia Navalha de Ouro", slug: "navalha-de-ouro", email: "dono@navalha.com", cor: "#145c3c",
     filiais: [
       { nome: "Centro", endereco: "Rua Augusta, 1200 - Consolação, São Paulo", barbeiros: ["Carlos Mendes", "Rafael Lima"] },
       { nome: "Shopping Norte", endereco: "Av. Otto Baumgart, 500 - Loja 210, São Paulo", barbeiros: ["Diego Souza"] },
@@ -93,8 +93,8 @@ async function main() {
         usuarios: { create: { nome: "Roberto", email: demo.email, senhaHash } },
         banners: {
           create: [
-            { imagem: bannerSvg("#1f1a17", demo.cor, "Corte + barba", "R$ 75 · toalha quente inclusa"), ordem: 0 },
-            { imagem: bannerSvg("#2b2420", demo.cor, "Clube do corte", "Cortes ilimitados por R$ 99,90/mês"), ordem: 1 },
+            { imagem: bannerSvg("#121211", "#d6d6cf", "Corte + barba", "R$ 75 · toalha quente inclusa"), ordem: 0 },
+            { imagem: bannerSvg("#1f1f1d", "#d6d6cf", "Clube do corte", "Cortes ilimitados por R$ 99,90/mês"), ordem: 1 },
           ],
         },
         parceiros: {

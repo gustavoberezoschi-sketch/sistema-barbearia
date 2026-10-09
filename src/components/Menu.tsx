@@ -115,7 +115,7 @@ export function Menu({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logo} alt="" className="size-10 rounded-xl object-cover" />
         ) : (
-          <span className="grid size-10 place-items-center rounded-xl bg-latao-500 text-couro-950">
+          <span className="grid size-10 place-items-center rounded-xl bg-latao-500 text-white">
             <Scissors className="size-5" aria-hidden />
           </span>
         )}
@@ -158,8 +158,8 @@ export function Menu({
                   ativo(href) ? "bg-white/[0.07] text-white" : "text-couro-300 hover:bg-white/[0.04] hover:text-white"
                 }`}
               >
-                {ativo(href) && <span className="absolute top-2 bottom-2 left-0 w-[3px] rounded-full bg-latao-500" aria-hidden />}
-                <Icone className={`size-[18px] ${ativo(href) ? "text-latao-500" : "text-couro-400 group-hover:text-couro-300"}`} aria-hidden />
+                {ativo(href) && <span className="absolute top-2 bottom-2 left-0 w-[3px] rounded-full bg-verde-claro" aria-hidden />}
+                <Icone className={`size-[18px] ${ativo(href) ? "text-verde-claro" : "text-couro-400 group-hover:text-couro-300"}`} aria-hidden />
                 {rotulo}
               </Link>
             ))}
@@ -172,7 +172,7 @@ export function Menu({
           <p className="min-w-0 truncate text-sm text-couro-300">
             {usuario}
             <span className="block text-[10px] font-semibold tracking-[0.12em] text-couro-400 uppercase">
-              Klareza<span className="text-latao-500">Barber</span>
+              Klareza<span className="text-verde-claro">Barber</span>
             </span>
           </p>
           <button className="rounded-lg p-1.5 text-couro-400 hover:bg-white/[0.06] hover:text-white" title="Sair" aria-label="Sair">

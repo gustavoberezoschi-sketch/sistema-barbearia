@@ -45,6 +45,7 @@ export default function Login() {
           </div>
           <p className="mt-8 text-center text-xs text-couro-400">
             <a href="/termos" className="hover:text-tinta">Termos de Uso</a> · <a href="/privacidade" className="hover:text-tinta">Política de Privacidade</a>
+            <span className="mt-1 block">KlarezaBarber é propriedade da Rotta Digital</span>
           </p>
         </form>
       </div>

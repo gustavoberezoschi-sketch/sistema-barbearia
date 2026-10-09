@@ -104,7 +104,7 @@ export function Avatar({ nome, foto, tamanho = 36 }: { nome: string; foto?: stri
     <img src={foto} alt="" width={tamanho} height={tamanho} className="shrink-0 rounded-full object-cover" style={{ width: tamanho, height: tamanho }} />
   ) : (
     <span
-      className="grid shrink-0 place-items-center rounded-full bg-couro-800 font-semibold text-latao-100"
+      className="grid shrink-0 place-items-center rounded-full bg-couro-800 font-semibold text-verde-claro"
       style={{ width: tamanho, height: tamanho, fontSize: tamanho * 0.38 }}
       aria-hidden
     >

@@ -33,7 +33,7 @@ export default async function Vitrine({ searchParams }: { searchParams: Promise<
       />
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl bg-couro-900 px-5 py-4 text-sm text-couro-300">
         <span>Link para os clientes:</span>
-        <code className="rounded-lg bg-white/10 px-2.5 py-1 text-latao-100">{site}/b/{b.slug}</code>
+        <code className="rounded-lg bg-white/10 px-2.5 py-1 text-verde-claro">{site}/b/{b.slug}</code>
         <span className="text-xs">Eles agendam, criam conta e acompanham tudo por ali.</span>
       </div>
 

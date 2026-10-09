@@ -4,20 +4,22 @@
   --font-sans: var(--fonte-texto), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--fonte-titulo), var(--fonte-texto), ui-sans-serif, sans-serif;
 
-  /* Paleta "couro e latão" */
-  --color-couro-950: #14100e;
-  --color-couro-900: #1f1a17;
-  --color-couro-800: #2b2420;
-  --color-couro-700: #3b322c;
-  --color-couro-400: #8f8279;
-  --color-couro-300: #b9ada4;
-  --color-latao-700: #8a6420;
-  --color-latao-600: #a37628;
-  --color-latao-500: #b8862f;
-  --color-latao-100: #f5ecd9;
-  --color-latao-50: #faf6ec;
-  --color-fundo: #f1f1ef;
-  --color-tinta: #26272b;
+  /* Paleta KlarezaBarber: preto, branco e verde.
+     Os nomes antigos (couro = tons neutros escuros, latão = verde de destaque) foram mantidos. */
+  --color-couro-950: #0b0b0a;
+  --color-couro-900: #121211;
+  --color-couro-800: #1f1f1d;
+  --color-couro-700: #3a3a36;
+  --color-couro-400: #77776f;
+  --color-couro-300: #b3b3ab;
+  --color-latao-700: #0d4029;
+  --color-latao-600: #114d33;
+  --color-latao-500: #145c3c;
+  --color-latao-100: #e3efe8;
+  --color-latao-50: #f2f7f4;
+  --color-verde-claro: #7fc4a0;
+  --color-fundo: #f6f6f3;
+  --color-tinta: #0f0f0e;
   --color-poste-vermelho: #c2412d;
   --color-poste-azul: #2f5d8a;
 }
@@ -96,7 +98,7 @@
   @apply btn bg-couro-900 text-white shadow-sm hover:bg-couro-700;
 }
 @utility btn-destaque {
-  @apply btn bg-latao-500 text-couro-950 shadow-sm hover:bg-latao-600 hover:text-white;
+  @apply btn bg-latao-500 text-white shadow-sm hover:bg-latao-700;
 }
 @utility btn-secundario {
   @apply btn border border-black/10 bg-white text-tinta hover:border-black/20 hover:bg-black/[0.02];

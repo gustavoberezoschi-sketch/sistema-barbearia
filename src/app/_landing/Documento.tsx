@@ -27,7 +27,7 @@ export function Documento({ titulo, resumo, children }: { titulo: string; resumo
       </article>
       <footer className="border-t border-[var(--lp-linha)]">
         <div className="mx-auto flex max-w-3xl flex-wrap justify-between gap-4 px-5 py-8 text-sm text-[var(--lp-cinza)]">
-          <p>© {new Date().getFullYear()} {EMPRESA.marca}</p>
+          <p>© {new Date().getFullYear()} {EMPRESA.proprietaria} · {EMPRESA.marca} é uma marca da {EMPRESA.proprietaria}</p>
           <Link href="/" className="hover:text-[var(--lp-tinta)]">Voltar ao site</Link>
         </div>
       </footer>

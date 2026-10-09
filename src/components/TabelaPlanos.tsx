@@ -13,7 +13,7 @@ export function TabelaPlanos({ atual, acao }: { atual?: CodigoPlano; acao?: (cod
         return (
           <div key={c} className={`relative flex flex-col rounded-3xl border-2 bg-white p-6 ${c === atual ? "border-latao-500" : destaque ? "border-couro-900" : "border-black/[0.06]"}`}>
             {c === atual ? (
-              <span className="absolute -top-3 left-6 rounded-full bg-latao-500 px-3 py-0.5 text-xs font-bold text-couro-950">Seu plano</span>
+              <span className="absolute -top-3 left-6 rounded-full bg-latao-500 px-3 py-0.5 text-xs font-bold text-white">Seu plano</span>
             ) : destaque ? (
               <span className="absolute -top-3 left-6 rounded-full bg-couro-900 px-3 py-0.5 text-xs font-bold text-white">Ideal para 2 unidades</span>
             ) : null}

@@ -98,14 +98,14 @@ function Cena({ rotulo, titulo, texto, itens, visual }: { rotulo: string; titulo
   return (
     <div className="grid h-full content-center items-center gap-6 md:grid-cols-[1fr_1.1fr] md:gap-12">
       <div>
-        <A d={0.05} className="mb-3 text-xs font-bold tracking-[0.18em] text-latao-500 uppercase">{rotulo}</A>
+        <A d={0.05} className="mb-3 text-xs font-bold tracking-[0.18em] text-verde-claro uppercase">{rotulo}</A>
         <A d={0.2}><h2 className="font-display text-[28px] leading-[1.05] font-bold tracking-tight text-white sm:text-5xl">{titulo}</h2></A>
         <A d={0.4}><p className="mt-3 max-w-md text-[15px] text-couro-300 sm:mt-4 sm:text-lg">{texto}</p></A>
         {itens && (
           <ul className="mt-6 hidden space-y-2.5 sm:block">
             {itens.map((t, i) => (
               <A key={t} as="li" d={0.7 + i * 0.18} c="ap-esq" className="flex items-center gap-3 text-white/90">
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-latao-500/15 text-latao-500"><Check className="size-3.5" strokeWidth={3} /></span>
+                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-latao-500/15 text-verde-claro"><Check className="size-3.5" strokeWidth={3} /></span>
                 {t}
               </A>
             ))}
@@ -124,13 +124,13 @@ function Abertura({ para }: { para: string | null }) {
     <div className="flex h-full flex-col items-center justify-center text-center">
       <A d={0.1} c="ap-largura" className="ap-poste mb-10 h-3 w-48 rounded-full sm:w-72" />
       <A d={0.4} c="ap-pop">
-        <span className="grid size-20 place-items-center rounded-3xl bg-latao-500 font-display text-5xl font-extrabold text-couro-950 shadow-[0_0_60px_rgba(184,134,47,0.45)] sm:size-24 sm:text-6xl">K</span>
+        <span className="grid size-20 place-items-center rounded-3xl bg-white font-display text-5xl font-bold text-tinta sm:size-24 sm:text-6xl">K</span>
       </A>
-      <A d={0.8}><h1 className="mt-6 font-display text-5xl font-bold tracking-tight text-white sm:text-7xl">Klareza<span className="text-latao-500">Barber</span></h1></A>
+      <A d={0.8}><h1 className="mt-6 font-display text-5xl font-bold tracking-tight text-white sm:text-7xl">Klareza<span className="text-verde-claro">Barber</span></h1></A>
       <A d={1.3}><p className="mt-4 max-w-xl text-lg text-couro-300 sm:text-2xl">Sua barbearia organizada, com a agenda cheia e recebendo todo mês.</p></A>
       {para && (
-        <A d={2} className="mt-8 rounded-full border border-latao-500/40 bg-latao-500/10 px-5 py-2 text-sm font-semibold text-latao-100">
-          Apresentação para <span className="text-latao-500">{para}</span>
+        <A d={2} className="mt-8 rounded-full border border-latao-500/40 bg-latao-500/10 px-5 py-2 text-sm font-semibold text-white">
+          Apresentação para <span className="text-verde-claro">{para}</span>
         </A>
       )}
     </div>
@@ -141,7 +141,7 @@ function Problema() {
   const dores = ["Agenda no caderno e no WhatsApp", "Cliente que marca e não aparece", "Mensalidade que ninguém lembra de cobrar", "Caixa que não bate no fim do dia"];
   return (
     <div className="mx-auto flex h-full max-w-3xl flex-col justify-center">
-      <A d={0.1} className="mb-6 text-xs font-bold tracking-[0.18em] text-latao-500 uppercase">Hoje, na maioria das barbearias</A>
+      <A d={0.1} className="mb-6 text-xs font-bold tracking-[0.18em] text-verde-claro uppercase">Hoje, na maioria das barbearias</A>
       <ul className="space-y-4 sm:space-y-5">
         {dores.map((t, i) => (
           <A key={t} as="li" d={0.3 + i * 0.35} c="ap-esq" className="font-display text-2xl font-bold text-white sm:text-4xl">
@@ -150,7 +150,7 @@ function Problema() {
         ))}
       </ul>
       <A d={4.3} className="mt-10">
-        <p className="font-display text-2xl font-bold text-latao-500 sm:text-4xl">Dá para resolver tudo isso num lugar só.</p>
+        <p className="font-display text-2xl font-bold text-verde-claro sm:text-4xl">Dá para resolver tudo isso num lugar só.</p>
       </A>
     </div>
   );
@@ -177,7 +177,7 @@ function Agendamento({ nome }: { nome: string }) {
   return (
     <Cena
       rotulo="Agendamento online"
-      titulo={<>O cliente agenda <span className="text-latao-500">sozinho</span>, a qualquer hora.</>}
+      titulo={<>O cliente agenda <span className="text-verde-claro">sozinho</span>, a qualquer hora.</>}
       texto="Um link no Instagram e no WhatsApp. O cliente escolhe o barbeiro, os serviços e o horário, sem você parar o corte para responder mensagem."
       itens={["Funciona no celular, sem baixar aplicativo", "Nunca marca dois clientes no mesmo horário", "Vários serviços de uma vez, com o total na hora"]}
       visual={
@@ -189,7 +189,7 @@ function Agendamento({ nome }: { nome: string }) {
             <div className="mt-3 space-y-2">
               {barbeiros.map((b, i) => (
                 <div key={b} className={`flex items-center gap-3 rounded-2xl border-2 p-2.5 transition ${n >= 1 && i === 0 ? "border-latao-500 bg-latao-50" : "border-black/[0.06]"}`}>
-                  <span className="grid size-10 place-items-center rounded-full bg-couro-900 font-display font-bold text-latao-500">{b[0]}</span>
+                  <span className="grid size-10 place-items-center rounded-full bg-couro-900 font-display font-bold text-verde-claro">{b[0]}</span>
                   <span className="text-sm font-semibold">{b}</span>
                   {n >= 1 && i === 0 && <Check className="ml-auto size-4 text-latao-600" strokeWidth={3} />}
                 </div>
@@ -224,7 +224,7 @@ function Agendamento({ nome }: { nome: string }) {
             </div>
             <div className="mt-3 grid grid-cols-3 gap-1.5">
               {horas.map((h) => (
-                <span key={h} className={`rounded-lg border py-2 text-center text-xs font-semibold transition ${n >= 6 && h === "10:30" ? "border-latao-500 bg-latao-500 text-couro-950" : "border-black/[0.08]"}`}>{h}</span>
+                <span key={h} className={`rounded-lg border py-2 text-center text-xs font-semibold transition ${n >= 6 && h === "10:30" ? "border-latao-500 bg-latao-500 text-white" : "border-black/[0.08]"}`}>{h}</span>
               ))}
             </div>
           </TelaCel>
@@ -269,7 +269,7 @@ function Agenda() {
   return (
     <Cena
       rotulo="Agenda da equipe"
-      titulo={<>A agenda de todo mundo, <span className="text-latao-500">em tempo real</span>.</>}
+      titulo={<>A agenda de todo mundo, <span className="text-verde-claro">em tempo real</span>.</>}
       texto="Cada barbeiro com sua coluna. O que entra pelo site aparece na hora, e você encaixa, bloqueia ou remarca com um toque."
       itens={["Bloqueio de almoço, folga e feriado", "Cada barbeiro pode ter o próprio login", "Histórico completo de cada cliente"]}
       visual={
@@ -323,7 +323,7 @@ function Lembretes({ nome }: { nome: string }) {
   return (
     <Cena
       rotulo="Lembretes no WhatsApp"
-      titulo={<>Menos cadeira vazia por <span className="text-latao-500">falta</span>.</>}
+      titulo={<>Menos cadeira vazia por <span className="text-verde-claro">falta</span>.</>}
       texto="Um toque e o WhatsApp abre com a mensagem pronta: dia, horário, barbeiro e link para confirmar ou desmarcar."
       itens={["Mensagens com o jeito da sua barbearia", "O cliente confirma pelo link", "Sem mensalidade de API de WhatsApp"]}
       visual={
@@ -367,12 +367,12 @@ function Clube() {
   return (
     <Cena
       rotulo="Clube de assinatura"
-      titulo={<>Dinheiro entrando <span className="text-latao-500">todo mês</span>, mesmo com a agenda vazia.</>}
+      titulo={<>Dinheiro entrando <span className="text-verde-claro">todo mês</span>, mesmo com a agenda vazia.</>}
       texto="Monte planos como “corte ilimitado” ou “corte + barba”. O cliente paga online e o plano renova sozinho."
       itens={["Cobrança automática por Pix, cartão ou boleto", "O dinheiro cai direto na conta da barbearia", "Controle de quantos cortes o cliente já usou"]}
       visual={
         <div className="w-full max-w-[460px] rounded-3xl border border-white/10 bg-couro-900 p-5 text-white shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] sm:p-6">
-          <div className="flex items-center gap-2 text-sm text-couro-300"><Crown className="size-4 text-latao-500" /> Clube Corte Ilimitado · R$ 89/mês</div>
+          <div className="flex items-center gap-2 text-sm text-couro-300"><Crown className="size-4 text-verde-claro" /> Clube Corte Ilimitado · R$ 89/mês</div>
           <div className="mt-4 grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-couro-400">Assinantes ativos</p>
@@ -380,13 +380,13 @@ function Clube() {
             </div>
             <div>
               <p className="text-xs text-couro-400">Receita garantida / mês</p>
-              <p className="numero text-3xl text-latao-500 sm:text-4xl">{formatarDinheiro(receita).replace(",00", "")}</p>
+              <p className="numero text-3xl text-verde-claro sm:text-4xl">{formatarDinheiro(receita).replace(",00", "")}</p>
             </div>
           </div>
           <div className="mt-6 flex h-28 items-end gap-2.5">
             {meses.map((h, i) => (
               <div key={i} className="flex h-full flex-1 flex-col items-center gap-1">
-                <div className="flex w-full flex-1 items-end"><div className="ap-cresce w-full rounded-t-md bg-gradient-to-t from-latao-700 to-latao-500" style={{ height: `${h}%`, ...atraso(0.6 + i * 0.2) }} /></div>
+                <div className="flex w-full flex-1 items-end"><div className="ap-cresce w-full rounded-t-md bg-gradient-to-t from-latao-500 to-verde-claro" style={{ height: `${h}%`, ...atraso(0.6 + i * 0.2) }} /></div>
                 <span className="text-[10px] text-couro-400">{["Mai", "Jun", "Jul", "Ago", "Set", "Out"][i]}</span>
               </div>
             ))}
@@ -412,7 +412,7 @@ function Comanda() {
   return (
     <Cena
       rotulo="Comanda, caixa e estoque"
-      titulo={<>Do corte ao caixa, <span className="text-latao-500">tudo batendo</span>.</>}
+      titulo={<>Do corte ao caixa, <span className="text-verde-claro">tudo batendo</span>.</>}
       texto="Abra a comanda, lance serviços e produtos e feche no Pix, cartão ou dinheiro. O estoque baixa e a comissão é calculada sozinha."
       itens={["Fechamento de caixa com sangria e suprimento", "Comissão de cada barbeiro", "Aviso de produto acabando"]}
       visual={
@@ -435,13 +435,13 @@ function Comanda() {
           <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 text-xs sm:block sm:space-y-3 sm:text-sm">
             <A d={3.4} c="ap-dir" className="rounded-2xl bg-couro-900 p-3 text-white">
               <p className="flex items-center gap-1.5 text-[11px] text-couro-400"><Package className="size-3.5" /> Estoque</p>
-              <p className="font-semibold">Pomada: 12 → <span className="text-latao-500">11</span></p>
+              <p className="font-semibold">Pomada: 12 → <span className="text-verde-claro">11</span></p>
             </A>
             <A d={3.8} c="ap-dir" className="rounded-2xl bg-couro-900 p-3 text-white">
               <p className="flex items-center gap-1.5 text-[11px] text-couro-400"><Scissors className="size-3.5" /> Comissão Carlos</p>
               <p className="font-semibold">+ R$ 32,00</p>
             </A>
-            <A d={4.2} c="ap-dir" className="rounded-2xl bg-latao-500 p-3 text-couro-950">
+            <A d={4.2} c="ap-dir" className="rounded-2xl bg-latao-500 p-3 text-white">
               <p className="flex items-center gap-1.5 text-[11px] font-semibold"><Wallet className="size-3.5" /> Caixa de hoje</p>
               <p className="font-display font-bold sm:text-lg">R$ 1.284,00</p>
             </A>
@@ -460,7 +460,7 @@ function Financeiro() {
   return (
     <Cena
       rotulo="Financeiro e relatórios"
-      titulo={<>Saiba quanto a barbearia <span className="text-latao-500">realmente</span> fatura.</>}
+      titulo={<>Saiba quanto a barbearia <span className="text-verde-claro">realmente</span> fatura.</>}
       texto="Faturamento, despesas, contas a pagar, ticket médio e o desempenho de cada barbeiro, sem planilha."
       itens={["Relatório por barbeiro, serviço e forma de pagamento", "Contas a pagar com vencimento", "Clientes sumidos para chamar de volta"]}
       visual={
@@ -509,7 +509,7 @@ function AreaCliente({ nome }: { nome: string }) {
   return (
     <Cena
       rotulo="App do cliente"
-      titulo={<>Um app com a <span className="text-latao-500">cara da sua barbearia</span>.</>}
+      titulo={<>Um app com a <span className="text-verde-claro">cara da sua barbearia</span>.</>}
       texto="Seu logo e suas cores. O cliente entra com o WhatsApp, vê o plano dele, os próximos horários e as vantagens do clube."
       itens={["Banners de promoção que você mesmo troca", "Clube de vantagens com parceiros e cupons", "Remarcar e cancelar sem te chamar"]}
       visual={
@@ -520,7 +520,7 @@ function AreaCliente({ nome }: { nome: string }) {
               <p className="font-display text-lg font-bold">{nome}</p>
             </div>
             <div className="flex-1 space-y-2.5 p-3">
-              <A d={0.4} c="ap-pop" className="rounded-2xl bg-gradient-to-br from-latao-500 to-latao-700 p-3 text-couro-950">
+              <A d={0.4} c="ap-pop" className="rounded-2xl bg-gradient-to-br from-latao-500 to-latao-700 p-3 text-white">
                 <p className="text-[10px] font-bold uppercase">Só neste sábado</p>
                 <p className="font-display text-base leading-tight font-bold">Corte + barba por R$ 70</p>
               </A>
@@ -558,20 +558,20 @@ function Unidades() {
   return (
     <Cena
       rotulo="Várias unidades"
-      titulo={<>Abriu outra unidade? <span className="text-latao-500">Está pronto.</span></>}
+      titulo={<>Abriu outra unidade? <span className="text-verde-claro">Está pronto.</span></>}
       texto="Agenda, caixa e estoque separados por unidade, e o dono acompanha tudo de um lugar só."
       itens={["O cliente escolhe a unidade ao agendar", "Transferência de estoque entre unidades", "Horário de funcionamento próprio de cada uma"]}
       visual={
         <div className="w-full max-w-[460px] space-y-3">
           <A d={0.2} className="flex w-fit gap-1 rounded-full bg-white/10 p-1 text-xs font-semibold">
             {["Todas", ...unidades.map((u) => u.n)].map((t, i) => (
-              <span key={t} className={`rounded-full px-3 py-1.5 transition ${i === n ? "bg-latao-500 text-couro-950" : "text-white/70"}`}>{t}</span>
+              <span key={t} className={`rounded-full px-3 py-1.5 transition ${i === n ? "bg-latao-500 text-white" : "text-white/70"}`}>{t}</span>
             ))}
           </A>
           {unidades.map((u, i) => (
             <A key={u.n} d={0.5 + i * 0.3} c="ap-dir">
               <div className={`flex items-center gap-4 rounded-2xl border bg-couro-900 p-4 text-white transition ${n === i + 1 ? "border-latao-500" : n === 0 ? "border-white/10" : "border-white/5 opacity-50"}`}>
-                <span className="grid size-11 place-items-center rounded-xl bg-latao-500/15 text-latao-500"><MapPin className="size-5" /></span>
+                <span className="grid size-11 place-items-center rounded-xl bg-latao-500/15 text-verde-claro"><MapPin className="size-5" /></span>
                 <span className="flex-1"><span className="block font-semibold">{u.n}</span><span className="text-xs text-couro-400">{u.a} atendimentos hoje</span></span>
                 <span className="text-right"><span className="block text-[10px] text-couro-400">Caixa</span><span className="numero">{u.c}</span></span>
               </div>
@@ -587,12 +587,12 @@ function Unidades() {
 function Planos({ planos }: { planos: Plano[] }) {
   return (
     <div className="flex h-full flex-col justify-center">
-      <A d={0.05} className="mb-2 text-center text-xs font-bold tracking-[0.18em] text-latao-500 uppercase">Planos</A>
+      <A d={0.05} className="mb-2 text-center text-xs font-bold tracking-[0.18em] text-verde-claro uppercase">Planos</A>
       <A d={0.2}><h2 className="text-center font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">Tudo incluso. Escolha o tamanho.</h2></A>
       <div className="mx-auto mt-6 grid w-full max-w-4xl gap-3 sm:mt-10 sm:grid-cols-3 sm:gap-4">
         {planos.map((p, i) => (
           <A key={p.nome} d={0.5 + i * 0.25} c="ap-pop">
-            <div className={`h-full rounded-3xl border p-4 sm:p-6 ${i === 1 ? "border-latao-500 bg-latao-500/10" : "border-white/10 bg-couro-900"}`}>
+            <div className={`h-full rounded-3xl border p-4 sm:p-6 ${i === 1 ? "border-verde-claro bg-latao-500/20" : "border-white/10 bg-couro-900"}`}>
               <div className="flex items-baseline justify-between gap-2 sm:block">
                 <p className="font-display text-lg font-bold text-white sm:text-xl">{p.nome}</p>
                 <p className="text-white sm:mt-1"><span className="numero text-2xl sm:text-4xl">{formatarDinheiro(p.mensal).replace(",00", "")}</span><span className="text-sm text-couro-400">/mês</span></p>
@@ -620,12 +620,12 @@ function Final({ whatsapp, para, recomecar, video }: { whatsapp: string | null; 
       <A d={0.1} c="ap-pop"><Marca tamanho="lg" clara /></A>
       <A d={0.4}>
         <h2 className="mt-8 max-w-3xl font-display text-3xl leading-tight font-bold tracking-tight text-white sm:text-6xl">
-          Vamos colocar {para ? <span className="text-latao-500">{para}</span> : "a sua barbearia"} no ar?
+          Vamos colocar {para ? <span className="text-verde-claro">{para}</span> : "a sua barbearia"} no ar?
         </h2>
       </A>
       <A d={0.7}><p className="mt-4 text-lg text-couro-300">A gente cadastra tudo com você: equipe, serviços, horários e planos.</p></A>
       {video ? (
-        <A d={1} c="ap-pop" className="mt-8 rounded-full bg-latao-500 px-7 py-3.5 font-display text-lg font-bold text-couro-950">
+        <A d={1} c="ap-pop" className="mt-8 rounded-full bg-latao-500 px-7 py-3.5 font-display text-lg font-bold text-white">
           Peça uma demonstração
         </A>
       ) : (
@@ -647,6 +647,7 @@ function Final({ whatsapp, para, recomecar, video }: { whatsapp: string | null; 
       </A>
       )}
       <A d={1.3} c="ap-largura" className="ap-poste mt-12 h-2 w-40 rounded-full" />
+      <A d={1.5} className="mt-6 text-xs text-couro-400">KlarezaBarber é uma marca da Rotta Digital</A>
     </div>
   );
 }
@@ -714,18 +715,18 @@ export function Apresentacao({ para, whatsapp, planos, video = false }: Props) {
   return (
     <div className="fixed inset-0 overflow-hidden bg-couro-950 text-white select-none" onClick={clicar}>
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <div className="ap-brilho absolute -top-1/3 -left-1/4 size-[80vmax] rounded-full bg-[radial-gradient(circle,rgba(184,134,47,0.16),transparent_60%)]" />
+        <div className="ap-brilho absolute -top-1/3 -left-1/4 size-[80vmax] rounded-full bg-[radial-gradient(circle,rgba(20,92,60,0.22),transparent_60%)]" />
         <div className="ap-brilho absolute -right-1/4 -bottom-1/2 size-[70vmax] rounded-full bg-[radial-gradient(circle,rgba(47,93,138,0.14),transparent_60%)]" style={{ animationDelay: "-4s" }} />
       </div>
 
       <div className="absolute inset-x-0 top-0 z-30 flex gap-1 px-4 pt-3 sm:px-6">
         {DURACAO.map((d, i) => (
           <span key={i} className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/15">
-            {i < cena && <span className="block h-full bg-latao-500" />}
+            {i < cena && <span className="block h-full bg-verde-claro" />}
             {i === cena && (
               <span
                 key={cena}
-                className={`block h-full bg-latao-500 ${d ? "ap-progresso" : ""}`}
+                className={`block h-full bg-verde-claro ${d ? "ap-progresso" : ""}`}
                 style={{ "--dur": `${d}ms`, animationPlayState: pausado ? "paused" : "running" } as CSSProperties}
               />
             )}

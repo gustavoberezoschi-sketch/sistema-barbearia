@@ -4,7 +4,7 @@ import { Scissors } from "lucide-react";
 export default function BarbeariaNaoEncontrada() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center p-6 text-center">
-      <span className="mb-5 grid size-12 place-items-center rounded-2xl bg-couro-900 text-latao-500">
+      <span className="mb-5 grid size-12 place-items-center rounded-2xl bg-couro-900 text-verde-claro">
         <Scissors className="size-6" />
       </span>
       <h1 className="titulo">Barbearia não encontrada</h1>

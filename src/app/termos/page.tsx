@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function Termos() {
   const whatsapp = (await db.configSistema.findUnique({ where: { id: "geral" } }).catch(() => null))?.whatsappSuporte ?? null;
   const contato = <Contato whatsapp={whatsapp} />;
-  const quem = EMPRESA.razaoSocial ? ` (${EMPRESA.razaoSocial}${EMPRESA.cnpj ? `, CNPJ ${EMPRESA.cnpj}` : ""})` : "";
+  const quem = `, de propriedade da ${EMPRESA.razaoSocial ?? EMPRESA.proprietaria}${EMPRESA.cnpj ? ` (CNPJ ${EMPRESA.cnpj})` : ""},`;
 
   return (
     <Documento
@@ -23,7 +23,7 @@ export default async function Termos() {
       <section>
         <h2>1. Aceite</h2>
         <p>
-          Ao contratar o KlarezaBarber{quem}, acessar o painel ou criar uma conta na área do cliente de uma barbearia, você concorda com estes Termos e
+          Ao contratar o KlarezaBarber{quem} acessar o painel ou criar uma conta na área do cliente de uma barbearia, você concorda com estes Termos e
           com a <Link href="/privacidade">Política de Privacidade</Link>. Se não concordar, não use o sistema.
         </p>
       </section>
@@ -113,7 +113,7 @@ export default async function Termos() {
       <section>
         <h2>7. Propriedade intelectual</h2>
         <p>
-          O software, a marca e o visual do KlarezaBarber pertencem aos seus titulares. A barbearia continua dona da própria marca, das fotos e dos
+          O software, a marca e o visual do KlarezaBarber pertencem à {EMPRESA.proprietaria}. A barbearia continua dona da própria marca, das fotos e dos
           conteúdos que publicar.
         </p>
       </section>

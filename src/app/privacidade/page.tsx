@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function Privacidade() {
   const whatsapp = (await db.configSistema.findUnique({ where: { id: "geral" } }).catch(() => null))?.whatsappSuporte ?? null;
   const contato = <Contato whatsapp={whatsapp} />;
-  const quem = EMPRESA.razaoSocial ? ` (${EMPRESA.razaoSocial}${EMPRESA.cnpj ? `, CNPJ ${EMPRESA.cnpj}` : ""})` : "";
+  const quem = `, de propriedade da ${EMPRESA.razaoSocial ?? EMPRESA.proprietaria}${EMPRESA.cnpj ? ` (CNPJ ${EMPRESA.cnpj})` : ""},`;
 
   return (
     <Documento

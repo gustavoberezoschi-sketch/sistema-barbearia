@@ -291,7 +291,8 @@ export default async function Landing() {
             <div>
               <Logo claro />
               <p className="mt-3">
-                {EMPRESA.razaoSocial ? `${EMPRESA.razaoSocial}${EMPRESA.cnpj ? ` · CNPJ ${EMPRESA.cnpj}` : ""}` : "Sistema de gestão para barbearias"}
+                Um produto da {EMPRESA.proprietaria}
+                {EMPRESA.cnpj ? ` · CNPJ ${EMPRESA.cnpj}` : ""}
               </p>
               {EMPRESA.email && <p className="mt-1">{EMPRESA.email}</p>}
             </div>
@@ -304,7 +305,7 @@ export default async function Landing() {
               <Link href="/privacidade#direitos" className="hover:text-white">Seus dados (LGPD)</Link>
             </nav>
           </div>
-          <p className="mx-auto max-w-7xl px-5 pb-10 text-xs text-white/40">© {new Date().getFullYear()} {EMPRESA.marca}. Imagens do sistema com dados de demonstração.</p>
+          <p className="mx-auto max-w-7xl px-5 pb-10 text-xs text-white/40">© {new Date().getFullYear()} {EMPRESA.proprietaria}. {EMPRESA.marca} é uma marca da {EMPRESA.proprietaria}. Imagens do sistema com dados de demonstração.</p>
         </footer>
       </section>
 

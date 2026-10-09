@@ -27,7 +27,7 @@ export default async function Configuracoes() {
 
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl bg-couro-900 px-5 py-4 text-sm text-couro-300">
         <span>Link de agendamento:</span>
-        <code className="rounded-lg bg-white/10 px-2.5 py-1 text-latao-100">{link}</code>
+        <code className="rounded-lg bg-white/10 px-2.5 py-1 text-verde-claro">{link}</code>
         <span className="text-xs">Coloque na bio do Instagram, no WhatsApp Business e no Google.</span>
       </div>
 
