@@ -69,8 +69,10 @@ export function Agendar({ slug, servicos, barbeiros, dias }: {
         setConfirmado(r.resumo);
       } else {
         setErro(r.erro);
-        setHorarios(await buscarHorarios(slug, servico.id, barbeiroId || null, dia));
-        setHora(null);
+        if (r.horarioOcupado) {
+          setHora(null);
+          setHorarios(await buscarHorarios(slug, servico.id, barbeiroId || null, dia));
+        }
       }
     });
   }
@@ -150,7 +152,10 @@ export function Agendar({ slug, servicos, barbeiros, dias }: {
                 {horarios.map((h) => (
                   <button
                     key={h}
-                    onClick={() => setHora(h)}
+                    onClick={() => {
+                      setHora(h);
+                      setErro(null);
+                    }}
                     className={`rounded-lg border py-2 text-sm font-medium ${hora === h ? "border-amber-600 bg-amber-600 text-white" : "border-stone-200 bg-white"}`}
                   >
                     {h}
@@ -159,6 +164,7 @@ export function Agendar({ slug, servicos, barbeiros, dias }: {
               </div>
             )}
           </div>
+          {erro && !hora && <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{erro}</p>}
         </Etapa>
       )}
 

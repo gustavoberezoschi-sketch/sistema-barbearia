@@ -23,7 +23,7 @@ export async function buscarHorarios(slug: string, servicoId: string, barbeiroId
 
 export type Confirmacao =
   | { ok: true; resumo: { barbeiro: string; servico: string; dia: string; hora: string } }
-  | { ok: false; erro: string };
+  | { ok: false; erro: string; horarioOcupado?: boolean };
 
 export async function agendar(
   slug: string,
@@ -51,7 +51,7 @@ export async function agendar(
       },
     };
   } catch (e) {
-    if (e instanceof ErroAgendamento) return { ok: false, erro: e.message };
+    if (e instanceof ErroAgendamento) return { ok: false, erro: e.message, horarioOcupado: true };
     throw e;
   }
 }

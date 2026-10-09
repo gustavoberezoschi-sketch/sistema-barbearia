@@ -16,7 +16,7 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
     where: {
       barbeariaId,
       ...(busca
-        ? { OR: [{ nome: { contains: busca } }, ...(digitos ? [{ telefone: { contains: digitos } }] : [])] }
+        ? { OR: [{ nome: { contains: busca, mode: "insensitive" as const } }, ...(digitos ? [{ telefone: { contains: digitos } }] : [])] }
         : {}),
     },
     include: {

@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // conexão via pooler (usada pelo app)
+  directUrl = env("DIRECT_URL") // conexão direta (usada nas migrações)
 }
 
 // Cada barbearia cliente do sistema. Todos os outros dados pertencem a uma barbearia.

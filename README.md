@@ -27,47 +27,84 @@ o próprio login, os próprios dados e o próprio link de agendamento.
 
 ## Tecnologias
 
-Next.js 15 (React 19) · TypeScript · Tailwind CSS 4 · Prisma · SQLite (em produção, PostgreSQL)
+Next.js 15 (React 19) · TypeScript · Tailwind CSS 4 · Prisma · PostgreSQL (Supabase) · hospedagem na Vercel
 
-## Rodando no seu computador
+## Colocando no ar (Supabase + Vercel)
 
-Precisa do [Node.js](https://nodejs.org) 20 ou mais novo.
+Leva uns 15 minutos. Você só precisa de uma conta no GitHub (que já tem).
+
+### 1. Banco de dados no Supabase
+
+1. Crie uma conta em https://supabase.com (pode entrar com o GitHub)
+2. Clique em **New project**
+   - **Name:** `sistema-barbearia`
+   - **Database Password:** clique em *Generate a password* e **guarde essa senha**
+   - **Region:** *South America (São Paulo)*
+3. Com o projeto criado, clique em **Connect** (no topo) → aba **ORMs** → **Prisma**.
+   Aparecem duas linhas: `DATABASE_URL` (porta 6543) e `DIRECT_URL` (porta 5432).
+   Copie as duas e troque `[YOUR-PASSWORD]` pela senha do passo anterior.
+
+### 2. Site na Vercel
+
+1. Crie uma conta em https://vercel.com usando **Continue with GitHub**
+2. Clique em **Add New… → Project**, escolha o repositório `sistema-barbearia` e clique em **Import**
+3. Em **Environment Variables**, adicione as 4 variáveis:
+
+   | Nome | Valor |
+   | --- | --- |
+   | `DATABASE_URL` | a linha da porta **6543** copiada do Supabase |
+   | `DIRECT_URL` | a linha da porta **5432** copiada do Supabase |
+   | `AUTH_SECRET` | uma sequência aleatória longa (ex.: gere em https://generate-secret.vercel.app/32) |
+   | `ADMIN_SENHA` | uma senha forte, só sua, para a área de administração |
+
+4. Clique em **Deploy**. A Vercel instala tudo, **cria as tabelas no Supabase sozinha** e
+   publica o site num endereço como `https://sistema-barbearia.vercel.app`.
+
+> Se o projeto for importado de um branch que não é o `main`, ajuste em
+> **Settings → Git → Production Branch**, ou faça o merge para o `main` antes.
+
+### 3. Cadastrando as barbearias clientes
+
+1. Acesse `https://SEU-SITE.vercel.app/admin` e entre com a `ADMIN_SENHA`
+2. Cadastre cada barbearia (nome, dono, e-mail e senha inicial)
+3. Passe para o dono o endereço `/login` com o e-mail e a senha. Ele cadastra os barbeiros e
+   serviços e ajusta o horário de funcionamento em **Configurações**
+4. Divulgue o link de agendamento `/b/<link-da-barbearia>` (bio do Instagram, WhatsApp,
+   Google Meu Negócio)
+
+Na mesma página `/admin` dá para ver todas as barbearias e redefinir a senha de um dono.
+
+### Domínio próprio (opcional)
+
+Na Vercel, **Settings → Domains** permite usar um domínio seu (ex.: `agendabarber.com.br`,
+registrado no https://registro.br por cerca de R$ 40/ano).
+
+### Custos
+
+- **Supabase:** gratuito até 500 MB de banco (sobra para várias barbearias). No plano
+  gratuito, o projeto é pausado após 7 dias **sem nenhum acesso**; com as barbearias
+  usando todo dia, isso não acontece.
+- **Vercel:** o plano gratuito (Hobby) serve para testar, mas pelos termos da Vercel é
+  só para uso **não comercial**. Quando começar a cobrar das barbearias, passe para o
+  plano **Pro** (US$ 20/mês).
+
+## Rodando no seu computador (para desenvolver)
+
+Precisa do [Node.js](https://nodejs.org) 20+ e de um PostgreSQL (pode usar um segundo
+projeto gratuito do Supabase só para testes).
 
 ```bash
 npm install
-cp .env.example .env          # e troque o AUTH_SECRET por uma chave aleatória
-npx prisma migrate dev        # cria o banco de dados
+cp .env.example .env          # preencha com os dados do seu banco de testes
+npx prisma migrate dev        # cria as tabelas
 npm run db:seed               # (opcional) cria 2 barbearias de demonstração
 npm run dev
 ```
 
 Abra http://localhost:3000. Logins da demonstração (senha `123456`):
-- `dono@navalha.com` → página pública `/b/navalha-de-ouro`
-- `dono@corteforte.com` → página pública `/b/corte-forte`
+`dono@navalha.com` (`/b/navalha-de-ouro`) e `dono@corteforte.com` (`/b/corte-forte`).
 
-## Cadastrando uma barbearia cliente
-
-```bash
-npm run criar-barbearia
-```
-
-O script pergunta o nome da barbearia, o link, o nome do dono, o e-mail e a senha.
-Depois disso, o dono entra no painel e cadastra os barbeiros e serviços. Por fim,
-basta divulgar o link `/b/<link>` (Instagram, WhatsApp, Google Meu Negócio).
-
-## Colocando no ar
-
-A forma mais simples e barata é a **Vercel** (hospedagem) com um banco **PostgreSQL**
-gratuito da [Neon](https://neon.tech) ou do [Supabase](https://supabase.com):
-
-1. Em `prisma/schema.prisma`, troque `provider = "sqlite"` por `provider = "postgresql"`
-2. Apague a pasta `prisma/migrations` e rode `npx prisma migrate dev --name inicial`
-   com o `DATABASE_URL` do PostgreSQL
-3. Na Vercel, importe o repositório e configure as variáveis `DATABASE_URL` e `AUTH_SECRET`
-4. Rode `npm run criar-barbearia` apontando para o banco de produção
-
-> Alternativa: manter o SQLite num servidor com disco persistente (VPS, Railway ou
-> Render com volume). Nesse caso, faça backup do arquivo do banco regularmente.
+Também dá para cadastrar barbearias pelo terminal com `npm run criar-barbearia`.
 
 ## Próximas etapas sugeridas
 
@@ -79,4 +116,4 @@ gratuito da [Neon](https://neon.tech) ou do [Supabase](https://supabase.com):
 - [ ] Planos de assinatura (ex.: corte ilimitado mensal) com cobrança recorrente via Pix/cartão
 - [ ] Programa de fidelidade / cashback
 - [ ] Login individual para cada barbeiro ver a própria agenda e comissão
-- [ ] Painel "super admin" para você gerenciar as barbearias clientes e mensalidades
+- [ ] Controle das mensalidades das barbearias clientes na área /admin

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obterOuCriarCliente, temConflito } from "@/lib/agenda";
+import { comTravaDaAgenda, obterOuCriarCliente, temConflito } from "@/lib/agenda";
 import { exigirSessao } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { FORMAS_PAGAMENTO, lerDinheiro, somenteDigitos } from "@/lib/formato";
@@ -127,22 +127,26 @@ export async function criarAgendamento(_: Resultado, form: FormData): Promise<Re
 
   const inicio = criarDataHora(dia, hora);
   const fim = new Date(inicio.getTime() + servico.duracaoMin * 60_000);
-  if (!encaixe && (await temConflito(barbeiro.id, inicio, fim)))
+  const criado = await comTravaDaAgenda(barbeariaId, async (tx) => {
+    if (!encaixe && (await temConflito(barbeiro.id, inicio, fim, tx))) return false;
+    await tx.agendamento.create({
+      data: {
+        barbeariaId,
+        barbeiroId: barbeiro.id,
+        servicoId: servico.id,
+        clienteId,
+        inicio,
+        fim,
+        precoCentavos: servico.precoCentavos,
+        origem: "PAINEL",
+        observacao: texto(form, "observacao") || null,
+      },
+    });
+    return true;
+  });
+  if (!criado)
     return { erro: `${barbeiro.nome} já tem atendimento nesse horário. Marque "encaixe" para agendar mesmo assim.` };
 
-  await db.agendamento.create({
-    data: {
-      barbeariaId,
-      barbeiroId: barbeiro.id,
-      servicoId: servico.id,
-      clienteId,
-      inicio,
-      fim,
-      precoCentavos: servico.precoCentavos,
-      origem: "PAINEL",
-      observacao: texto(form, "observacao") || null,
-    },
-  });
   revalidatePath("/painel");
   redirect(`/painel?dia=${dia}`);
 }

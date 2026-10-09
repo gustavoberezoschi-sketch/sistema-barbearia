@@ -41,6 +41,7 @@ async function main() {
   const hoje = diaLocal();
 
   for (const demo of DEMOS) {
+    await db.agendamento.deleteMany({ where: { barbearia: { slug: demo.slug } } });
     await db.barbearia.deleteMany({ where: { slug: demo.slug } });
     const b = await db.barbearia.create({
       data: {

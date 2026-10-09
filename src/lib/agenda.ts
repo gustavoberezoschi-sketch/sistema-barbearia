@@ -108,6 +108,17 @@ export async function obterOuCriarCliente(
 
 export class ErroAgendamento extends Error {}
 
+/**
+ * Executa a função numa transação com trava exclusiva da barbearia, para que dois
+ * agendamentos simultâneos não reservem o mesmo horário.
+ */
+export async function comTravaDaAgenda<T>(barbeariaId: string, fn: (tx: Prisma.TransactionClient) => Promise<T>) {
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${barbeariaId}))`;
+    return fn(tx);
+  });
+}
+
 /** Agendamento feito pelo cliente na página pública. Revalida o horário dentro da transação. */
 export async function reservarOnline(params: {
   barbeariaId: string;
@@ -118,7 +129,7 @@ export async function reservarOnline(params: {
   nome: string;
   telefone: string;
 }) {
-  return db.$transaction(async (tx) => {
+  return comTravaDaAgenda(params.barbeariaId, async (tx) => {
     const horarios = await horariosDisponiveis(params, tx);
     const escolhido = horarios.find((h) => h.hora === params.hora);
     if (!escolhido) throw new ErroAgendamento("Esse horário acabou de ser ocupado. Escolha outro.");
