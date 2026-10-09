@@ -1,0 +1,99 @@
+/* Animações da apresentação comercial (/apresentacao). */
+
+.ap-sobe,
+.ap-pop,
+.ap-esq,
+.ap-dir,
+.ap-surge {
+  opacity: 0;
+  animation-fill-mode: forwards;
+  animation-delay: var(--d, 0s);
+}
+.ap-sobe { animation-name: ap-sobe; animation-duration: 0.7s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.ap-pop { animation-name: ap-pop; animation-duration: 0.55s; animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+.ap-esq { animation-name: ap-esq; animation-duration: 0.7s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.ap-dir { animation-name: ap-dir; animation-duration: 0.7s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+.ap-surge { animation-name: ap-surge; animation-duration: 0.5s; animation-timing-function: ease-out; }
+
+@keyframes ap-sobe { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@keyframes ap-pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+@keyframes ap-esq { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@keyframes ap-dir { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes ap-surge { from { opacity: 0; } to { opacity: 1; } }
+
+/* Barras de gráfico crescendo */
+.ap-cresce {
+  transform: scaleY(0);
+  transform-origin: bottom;
+  animation: ap-cresce 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0s) forwards;
+}
+@keyframes ap-cresce { to { transform: scaleY(1); } }
+
+.ap-largura {
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: ap-largura 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0s) forwards;
+}
+@keyframes ap-largura { to { transform: scaleX(1); } }
+
+/* Problema riscado */
+.ap-risca { position: relative; }
+.ap-risca::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  top: 52%;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--color-poste-vermelho);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: ap-largura 0.45s ease-out var(--r, 1s) forwards;
+}
+.ap-apaga { animation: ap-apaga 0.5s ease-out var(--r, 1s) forwards; }
+@keyframes ap-apaga { to { opacity: 0.35; } }
+
+/* Faixa de poste de barbeiro em movimento */
+.ap-poste {
+  background: repeating-linear-gradient(-45deg, var(--color-poste-vermelho) 0 14px, #f4efe6 14px 28px, var(--color-poste-azul) 28px 42px, #f4efe6 42px 56px);
+  background-size: 79.2px 79.2px;
+  animation: ap-gira 1.6s linear infinite;
+}
+@keyframes ap-gira { to { background-position: 79.2px 0; } }
+
+/* Linha do "agora" descendo na agenda */
+.ap-agora { animation: ap-agora 7s linear 0.6s forwards; top: var(--de); }
+@keyframes ap-agora { from { top: var(--de); } to { top: var(--ate); } }
+
+/* Clique do dedo */
+.ap-toque {
+  opacity: 0;
+  animation: ap-toque 0.6s ease-out var(--d, 0s) forwards;
+}
+@keyframes ap-toque {
+  0% { opacity: 0; transform: scale(0.4); }
+  40% { opacity: 0.55; }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+
+/* Barra de progresso de cada cena */
+.ap-progresso { animation: ap-largura var(--dur, 8s) linear forwards; }
+
+/* Brilho de fundo */
+.ap-brilho {
+  animation: ap-brilho 9s ease-in-out infinite alternate;
+}
+@keyframes ap-brilho {
+  from { transform: translate(-6%, -4%) scale(1); }
+  to { transform: translate(6%, 4%) scale(1.15); }
+}
+
+.ap-carimbo {
+  opacity: 0;
+  animation: ap-carimbo 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) var(--d, 0s) forwards;
+}
+@keyframes ap-carimbo {
+  from { opacity: 0; transform: rotate(-12deg) scale(2.2); }
+  to { opacity: 1; transform: rotate(-12deg) scale(1); }
+}
