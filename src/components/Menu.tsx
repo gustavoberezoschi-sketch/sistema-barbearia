@@ -145,7 +145,7 @@ export function Menu({
         <p className="mx-6 mb-4 text-xs text-couro-400">Unidade {filialAtual.nome}</p>
       )}
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4" aria-label="Menu principal">
+      <nav className="rolagem-escura flex-1 space-y-5 overflow-y-auto px-3 pb-4" aria-label="Menu principal">
         {grupos.map((g) => (
           <div key={g.titulo}>
             <p className="mb-1.5 px-3 text-[10px] font-semibold tracking-[0.14em] text-couro-400 uppercase">{g.titulo}</p>
