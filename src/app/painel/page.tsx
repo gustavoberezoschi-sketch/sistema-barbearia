@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import {
   ArrowRight,
   Cake,
+  MessageCircle,
   CalendarDays,
   CircleDollarSign,
   Crown,
@@ -59,6 +60,12 @@ export default async function Inicio() {
       db.cliente.findMany({ where: { barbeariaId, nascimento: { not: null } }, select: { id: true, nome: true, telefone: true, nascimento: true } }),
       db.barbearia.findUniqueOrThrow({ where: { id: barbeariaId }, select: { nome: true, slug: true } }),
     ]);
+  const amanhaIni = criarDataHora(somarDias(hoje, 1), "00:00");
+  const semLembrete = await db.agendamento.findMany({
+    where: { barbeariaId, ...filtro, status: { in: ["AGENDADO", "CONFIRMADO"] }, lembreteEnviadoEm: null, inicio: { gte: amanhaIni, lt: criarDataHora(somarDias(hoje, 2), "00:00") } },
+    select: { id: true, grupo: true },
+  });
+  const lembretesAmanha = new Set(semLembrete.map((a) => a.grupo ?? a.id)).size;
 
   const somaEntre = (ini: string, fim: string) =>
     comandasPeriodo.filter((c) => c.fechadaEm && c.fechadaEm >= de(ini) && c.fechadaEm < ate(fim)).reduce((s, c) => s + c.totalCentavos, 0);
@@ -180,6 +187,9 @@ export default async function Inicio() {
 
           <Secao titulo="Avisos">
             <ul className="space-y-2.5 text-sm">
+              {lembretesAmanha > 0 && (
+                <Aviso href="/painel/lembretes" icone={MessageCircle} texto={`${lembretesAmanha} cliente(s) de amanhã ainda sem lembrete no WhatsApp`} />
+              )}
               {estoqueBaixo.length > 0 && (
                 <Aviso href="/painel/produtos" icone={Package} texto={`${estoqueBaixo.length} produto(s) com estoque baixo: ${estoqueBaixo.slice(0, 3).map((p) => p.nome).join(", ")}`} />
               )}
@@ -195,7 +205,7 @@ export default async function Inicio() {
               {assinaturasVencidas > 0 && (
                 <Aviso href="/painel/assinaturas" icone={Crown} alerta texto={`${assinaturasVencidas} assinatura(s) com mensalidade atrasada`} />
               )}
-              {estoqueBaixo.length === 0 && contas.length === 0 && assinaturasVencidas === 0 && (
+              {lembretesAmanha === 0 && estoqueBaixo.length === 0 && contas.length === 0 && assinaturasVencidas === 0 && (
                 <li className="text-couro-400">Tudo em dia por aqui.</li>
               )}
             </ul>

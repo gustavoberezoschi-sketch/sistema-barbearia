@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Ban, CalendarCheck, Check, Clock, MessageCircle, ReceiptText, Scissors, UserRound } from "lucide-react";
+import { BotaoWhatsApp } from "@/components/BotaoWhatsApp";
 import { FormAcao } from "@/components/FormAcao";
 import { Avatar, Cabecalho, Etiqueta, Secao } from "@/components/ui";
 import { exigirSessao } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { formatarDinheiro, formatarTelefone, linkWhatsApp } from "@/lib/formato";
+import { formatarDinheiro, formatarTelefone } from "@/lib/formato";
+import { MSG_CONFIRMACAO_PADRAO, MSG_LEMBRETE_PADRAO, linkDaMensagem } from "@/lib/mensagens";
+import { enderecoDoSite } from "@/lib/site";
 import { diaLocal, formatarDiaExtenso, horaLocal } from "@/lib/tempo";
 import { iniciarAtendimento, mudarStatus, remarcarAgendamento } from "../../agenda/actions";
 
@@ -29,7 +32,7 @@ export default async function Agendamento({ params }: { params: Promise<{ id: st
       barbeariaId: sessao.barbeariaId,
       ...(sessao.barbeiroId ? { barbeiroId: sessao.barbeiroId } : {}),
     },
-    include: { cliente: true, servico: true, barbeiro: true, barbearia: true, comanda: true },
+    include: { cliente: true, servico: true, barbeiro: true, barbearia: true, comanda: true, filial: true },
   });
   if (!ag) notFound();
 
@@ -38,9 +41,20 @@ export default async function Agendamento({ params }: { params: Promise<{ id: st
   const quando = `${formatarDiaExtenso(dia)} às ${horaLocal(ag.inicio)}`;
   const status = STATUS[ag.status as keyof typeof STATUS] ?? STATUS.AGENDADO;
   const aberto = ag.status === "AGENDADO" || ag.status === "CONFIRMADO";
-  const primeiroNome = ag.cliente.nome.split(" ")[0];
-  const msgConfirmar = `Olá, ${primeiroNome}! Passando para confirmar seu horário na ${ag.barbearia.nome}: ${quando}, ${ag.servico.nome} com ${ag.barbeiro.nome}. Posso confirmar?`;
-  const msgLembrete = `Oi, ${primeiroNome}! Lembrete: seu horário na ${ag.barbearia.nome} é ${quando}. Te esperamos! ✂️`;
+  const grupo = ag.grupo
+    ? await db.agendamento.findMany({ where: { grupo: ag.grupo, status: { not: "CANCELADO" } }, include: { servico: true }, orderBy: { inicio: "asc" } })
+    : [ag];
+  const dadosMsg = {
+    cliente: ag.cliente.nome,
+    barbearia: ag.barbearia.nome,
+    inicio: grupo[0].inicio,
+    servicos: grupo.map((g) => g.servico.nome),
+    barbeiro: ag.barbeiro.nome,
+    unidade: ag.filial.nome,
+    endereco: ag.filial.endereco,
+    link: `${await enderecoDoSite()}/b/${ag.barbearia.slug}/agendamento/${grupo[0].token}`,
+  };
+  const ids = grupo.map((g) => g.id);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -124,14 +138,28 @@ export default async function Agendamento({ params }: { params: Promise<{ id: st
                 <span className="text-sm text-couro-400">{formatarTelefone(ag.cliente.telefone)}</span>
               </span>
             </Link>
-            <div className="mt-4 grid gap-2">
-              <a href={linkWhatsApp(ag.cliente.telefone, msgConfirmar)} target="_blank" className="btn-secundario justify-start">
-                <MessageCircle className="size-4 text-emerald-600" /> Pedir confirmação
-              </a>
-              <a href={linkWhatsApp(ag.cliente.telefone, msgLembrete)} target="_blank" className="btn-secundario justify-start">
-                <MessageCircle className="size-4 text-emerald-600" /> Enviar lembrete
-              </a>
-            </div>
+            {aberto && (
+              <div className="mt-4 space-y-2.5 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 font-medium"><MessageCircle className="size-4 text-emerald-600" /> Confirmação</span>
+                  <BotaoWhatsApp
+                    href={linkDaMensagem(ag.cliente.telefone, ag.barbearia.msgConfirmacao ?? MSG_CONFIRMACAO_PADRAO, dadosMsg)}
+                    ids={ids}
+                    tipo="CONFIRMACAO"
+                    enviadoEm={grupo[0].confirmacaoEnviadaEm?.toISOString() ?? null}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 font-medium"><MessageCircle className="size-4 text-emerald-600" /> Lembrete</span>
+                  <BotaoWhatsApp
+                    href={linkDaMensagem(ag.cliente.telefone, ag.barbearia.msgLembrete ?? MSG_LEMBRETE_PADRAO, dadosMsg)}
+                    ids={ids}
+                    tipo="LEMBRETE"
+                    enviadoEm={grupo[0].lembreteEnviadoEm?.toISOString() ?? null}
+                  />
+                </div>
+              </div>
+            )}
           </Secao>
 
           {aberto && (

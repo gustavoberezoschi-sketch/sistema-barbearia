@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { corDoTexto, formatarDinheiro, linkWhatsApp } from "@/lib/formato";
 import { diaLocal, formatarDiaExtenso, horaLocal } from "@/lib/tempo";
 import { Cancelar } from "./Cancelar";
+import { Confirmar } from "./Confirmar";
 
 export const metadata: Metadata = { title: "Meu agendamento", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -48,6 +49,10 @@ export default async function MeuAgendamento({ params }: { params: Promise<{ slu
             </p>
           )}
         </div>
+        {ag.status === "AGENDADO" && <Confirmar slug={slug} token={token} />}
+        {ag.status === "CONFIRMADO" && (
+          <p className="mt-4 rounded-2xl bg-emerald-600/10 p-3 text-center text-sm font-semibold text-emerald-800">Presença confirmada. Te esperamos!</p>
+        )}
         {podeCancelar && <Cancelar slug={slug} token={token} />}
         {ativo && !podeCancelar && (
           <p className="mt-4 text-sm text-couro-400">Para cancelar ou remarcar agora, fale direto com a barbearia.</p>

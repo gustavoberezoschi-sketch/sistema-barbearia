@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu as IconeMenu,
+  MessageCircle,
   Package,
   ReceiptText,
   Scissors,
@@ -33,6 +34,7 @@ const GESTOR: Grupo[] = [
     itens: [
       { href: "/painel", rotulo: "Início", icone: LayoutDashboard },
       { href: "/painel/agenda", rotulo: "Agenda", icone: CalendarDays },
+      { href: "/painel/lembretes", rotulo: "Lembretes", icone: MessageCircle },
       { href: "/painel/comandas", rotulo: "Comandas", icone: ReceiptText },
       { href: "/painel/caixa", rotulo: "Caixa", icone: Wallet },
     ],
@@ -69,6 +71,7 @@ const BARBEIRO: Grupo[] = [
     titulo: "Meu dia",
     itens: [
       { href: "/painel/agenda", rotulo: "Minha agenda", icone: CalendarDays },
+      { href: "/painel/lembretes", rotulo: "Lembretes", icone: MessageCircle },
       { href: "/painel/comandas", rotulo: "Comandas", icone: ReceiptText },
       { href: "/painel/relatorios", rotulo: "Minhas comissões", icone: ChartColumn },
     ],

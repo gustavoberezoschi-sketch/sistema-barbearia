@@ -10,21 +10,25 @@ datasource db {
 
 // Cada barbearia cliente do sistema. Todos os outros dados pertencem a uma barbearia.
 model Barbearia {
-  id                String   @id @default(cuid())
+  id                String  @id @default(cuid())
   nome              String
-  slug              String   @unique // usado na página pública: /b/<slug>
+  slug              String  @unique // usado na página pública: /b/<slug>
   telefone          String?
   endereco          String?
   instagram         String?
   descricao         String?
   logo              String? // imagem (data URL) redimensionada no navegador
   capa              String?
-  corDestaque       String   @default("#c9a14a")
-  intervaloMin      Int      @default(30) // de quanto em quanto tempo os horários são oferecidos
-  antecedenciaDias  Int      @default(30) // até quantos dias à frente o cliente pode agendar
-  cancelamentoHoras Int      @default(2) // até quantas horas antes o cliente pode cancelar pelo link
-  cashbackPct       Int      @default(0) // % do valor pago que volta como crédito para o cliente
-  criadoEm          DateTime @default(now())
+  corDestaque       String  @default("#c9a14a")
+  intervaloMin      Int     @default(30) // de quanto em quanto tempo os horários são oferecidos
+  antecedenciaDias  Int     @default(30) // até quantos dias à frente o cliente pode agendar
+  cancelamentoHoras Int     @default(2) // até quantas horas antes o cliente pode cancelar pelo link
+  cashbackPct       Int     @default(0) // % do valor pago que volta como crédito para o cliente
+
+  // Textos das mensagens de WhatsApp (vazio = texto padrão)
+  msgConfirmacao String?
+  msgLembrete    String?
+  criadoEm       DateTime @default(now())
 
   usuarios     Usuario[]
   filiais      Filial[]
@@ -160,27 +164,29 @@ model Cliente {
 }
 
 model Agendamento {
-  id             String    @id @default(cuid())
-  barbeariaId    String
-  barbearia      Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
-  filialId       String
-  filial         Filial    @relation(fields: [filialId], references: [id], onDelete: NoAction)
-  barbeiroId     String
-  barbeiro       Barbeiro  @relation(fields: [barbeiroId], references: [id])
-  servicoId      String
-  servico        Servico   @relation(fields: [servicoId], references: [id])
-  clienteId      String
-  cliente        Cliente   @relation(fields: [clienteId], references: [id])
-  inicio         DateTime
-  fim            DateTime
-  precoCentavos  Int // preço no momento do agendamento
-  status         String    @default("AGENDADO") // AGENDADO | CONFIRMADO | CONCLUIDO | CANCELADO | FALTOU
-  origem         String    @default("ONLINE") // ONLINE | PAINEL
-  formaPagamento String?
-  observacao     String?
-  token          String    @unique @default(cuid()) // link para o cliente ver/cancelar
-  grupo          String? // agendamentos de vários serviços em sequência compartilham o grupo
-  criadoEm       DateTime  @default(now())
+  id                   String    @id @default(cuid())
+  barbeariaId          String
+  barbearia            Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  filialId             String
+  filial               Filial    @relation(fields: [filialId], references: [id], onDelete: NoAction)
+  barbeiroId           String
+  barbeiro             Barbeiro  @relation(fields: [barbeiroId], references: [id])
+  servicoId            String
+  servico              Servico   @relation(fields: [servicoId], references: [id])
+  clienteId            String
+  cliente              Cliente   @relation(fields: [clienteId], references: [id])
+  inicio               DateTime
+  fim                  DateTime
+  precoCentavos        Int // preço no momento do agendamento
+  status               String    @default("AGENDADO") // AGENDADO | CONFIRMADO | CONCLUIDO | CANCELADO | FALTOU
+  origem               String    @default("ONLINE") // ONLINE | PAINEL
+  formaPagamento       String?
+  observacao           String?
+  token                String    @unique @default(cuid()) // link para o cliente ver/cancelar
+  grupo                String? // agendamentos de vários serviços em sequência compartilham o grupo
+  confirmacaoEnviadaEm DateTime?
+  lembreteEnviadoEm    DateTime?
+  criadoEm             DateTime  @default(now())
 
   comanda Comanda?
 

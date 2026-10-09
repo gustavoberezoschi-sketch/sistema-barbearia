@@ -13,6 +13,7 @@ o próprio login, os próprios dados e o próprio link de agendamento.
 **Dia a dia**
 - **Início:** faturamento do dia e do mês (com comparação), gráfico de 14 dias, próximos atendimentos, avisos (estoque baixo, contas vencendo, mensalidades atrasadas) e aniversariantes
 - **Agenda em grade:** uma coluna por barbeiro, clique num horário vazio para agendar, encaixe, remarcação, confirmação/lembrete por WhatsApp, falta e cancelamento
+- **Lembretes por WhatsApp (sem API, sem custo):** lista de clientes de amanhã, de hoje e dos novos agendamentos pelo site; um botão abre o WhatsApp com a mensagem pronta e marca como enviado. Textos editáveis, com link para o cliente confirmar presença ou cancelar
 - **Folgas e bloqueios:** almoço, folga, férias ou feriado (por barbeiro ou da barbearia toda)
 - **Comandas:** serviços + produtos, desconto, cashback, forma de pagamento, recibo por WhatsApp e estorno
 - **Caixa:** abertura com troco, suprimento, sangria, despesas, totais por forma de pagamento e fechamento com conferência do dinheiro
@@ -127,7 +128,7 @@ Também dá para cadastrar barbearias pelo terminal com `npm run criar-barbearia
 
 ## Próximas etapas sugeridas
 
-- [ ] Lembretes automáticos por WhatsApp (precisa de uma conta na API do WhatsApp)
+- [ ] Envio automático dos lembretes (precisaria de uma API de WhatsApp paga)
 - [ ] Cobrança automática das assinaturas no cartão/Pix (precisa de conta no Mercado Pago ou Asaas)
 - [ ] Emissão de nota fiscal de serviço (NFS-e)
 - [ ] Pacotes de serviços pré-pagos e vale-presente

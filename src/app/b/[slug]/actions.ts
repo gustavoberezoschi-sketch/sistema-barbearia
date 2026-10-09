@@ -117,3 +117,17 @@ export async function cancelarPeloCliente(slug: string, token: string): Promise<
   revalidatePath("/painel", "layout");
   return { ok: true };
 }
+
+/** Cliente confirma que vai comparecer (pelo link do lembrete). */
+export async function confirmarPeloCliente(slug: string, token: string): Promise<{ ok: boolean; erro?: string }> {
+  const ag = await db.agendamento.findFirst({ where: { token, barbearia: { slug } } });
+  if (!ag) return { ok: false, erro: "Agendamento não encontrado." };
+  if (ag.status !== "AGENDADO") return { ok: ag.status === "CONFIRMADO" };
+  await db.agendamento.updateMany({
+    where: ag.grupo ? { grupo: ag.grupo, status: "AGENDADO" } : { id: ag.id },
+    data: { status: "CONFIRMADO" },
+  });
+  revalidatePath(`/b/${slug}`, "layout");
+  revalidatePath("/painel", "layout");
+  return { ok: true };
+}
