@@ -1,173 +1,223 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { exigirSessao } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { redirect } from "next/navigation";
 import {
-  FORMAS_PAGAMENTO,
-  STATUS_AGENDAMENTO,
-  formatarDinheiro,
-  formatarTelefone,
-  linkWhatsApp,
-} from "@/lib/formato";
-import { diaLocal, diaValido, formatarDiaExtenso, horaLocal, inicioEFimDoDia, somarDias } from "@/lib/tempo";
-import { mudarStatus } from "./actions";
+  ArrowRight,
+  Cake,
+  CalendarDays,
+  CircleDollarSign,
+  Crown,
+  Package,
+  ReceiptText,
+  TrendingUp,
+  TriangleAlert,
+  Wallet,
+} from "lucide-react";
+import { GraficoBarras } from "@/components/GraficoBarras";
+import { Avatar, Cabecalho, Etiqueta, Indicador, Secao, Vazio } from "@/components/ui";
+import { exigirSessao } from "@/lib/auth";
+import { caixaAberto } from "@/lib/caixa";
+import { db } from "@/lib/db";
+import { formatarDinheiro, linkWhatsApp } from "@/lib/formato";
+import { criarDataHora, diaLocal, formatarDia, horaLocal, inicioEFimDoDia, limitesDoMes, somarDias, somarMeses } from "@/lib/tempo";
 
+export const metadata: Metadata = { title: "Início" };
 export const dynamic = "force-dynamic";
 
-export default async function Agenda({ searchParams }: { searchParams: Promise<{ dia?: string }> }) {
-  const { barbeariaId } = await exigirSessao();
-  const parametro = (await searchParams).dia;
-  const dia = parametro && diaValido(parametro) ? parametro : diaLocal();
-  const { inicio, fim } = inicioEFimDoDia(dia);
+export default async function Inicio() {
+  const sessao = await exigirSessao();
+  if (sessao.papel === "BARBEIRO") redirect("/painel/agenda");
+  const { barbeariaId } = sessao;
+  const hoje = diaLocal();
+  const { inicio: iniHoje, fim: fimHoje } = inicioEFimDoDia(hoje);
+  const mes = limitesDoMes(hoje);
+  const mesPassado = limitesDoMes(somarMeses(hoje, -1));
+  const iniGrafico = somarDias(hoje, -13);
+  const ate = (dia: string) => criarDataHora(somarDias(dia, 1), "00:00");
+  const de = (dia: string) => criarDataHora(dia, "00:00");
 
-  const [barbearia, barbeiros, agendamentos] = await Promise.all([
-    db.barbearia.findUniqueOrThrow({ where: { id: barbeariaId } }),
-    db.barbeiro.findMany({ where: { barbeariaId, ativo: true }, orderBy: { nome: "asc" } }),
-    db.agendamento.findMany({
-      where: { barbeariaId, inicio: { gte: inicio, lt: fim } },
-      include: { cliente: true, servico: true },
-      orderBy: { inicio: "asc" },
-    }),
-  ]);
+  const [agendamentosHoje, comandasPeriodo, abertas, caixa, produtos, contas, assinaturasVencidas, clientes, barbearia] =
+    await Promise.all([
+      db.agendamento.findMany({
+        where: { barbeariaId, inicio: { gte: iniHoje, lt: fimHoje }, status: { not: "CANCELADO" } },
+        include: { cliente: true, servico: true, barbeiro: true },
+        orderBy: { inicio: "asc" },
+      }),
+      db.comanda.findMany({
+        where: { barbeariaId, status: "FECHADA", fechadaEm: { gte: de(mesPassado.inicio < iniGrafico ? mesPassado.inicio : iniGrafico), lt: fimHoje } },
+        select: { totalCentavos: true, fechadaEm: true },
+      }),
+      db.comanda.count({ where: { barbeariaId, status: "ABERTA" } }),
+      caixaAberto(barbeariaId),
+      db.produto.findMany({ where: { barbeariaId, ativo: true }, select: { nome: true, estoque: true, estoqueMinimo: true } }),
+      db.contaPagar.findMany({ where: { barbeariaId, pagoEm: null, vencimento: { lte: somarDias(hoje, 7) } }, orderBy: { vencimento: "asc" } }),
+      db.assinatura.count({ where: { barbeariaId, status: "ATIVA", pagoAte: { lt: hoje } } }),
+      db.cliente.findMany({ where: { barbeariaId, nascimento: { not: null } }, select: { id: true, nome: true, telefone: true, nascimento: true } }),
+      db.barbearia.findUniqueOrThrow({ where: { id: barbeariaId }, select: { nome: true, slug: true } }),
+    ]);
 
-  const ativos = agendamentos.filter((a) => a.status !== "CANCELADO");
-  const concluidos = agendamentos.filter((a) => a.status === "CONCLUIDO");
-  const faturado = concluidos.reduce((soma, a) => soma + a.precoCentavos, 0);
-  const previsto = ativos
-    .filter((a) => a.status !== "FALTOU")
-    .reduce((soma, a) => soma + a.precoCentavos, 0);
+  const somaEntre = (ini: string, fim: string) =>
+    comandasPeriodo.filter((c) => c.fechadaEm && c.fechadaEm >= de(ini) && c.fechadaEm < ate(fim)).reduce((s, c) => s + c.totalCentavos, 0);
+  const contaEntre = (ini: string, fim: string) => comandasPeriodo.filter((c) => c.fechadaEm && c.fechadaEm >= de(ini) && c.fechadaEm < ate(fim)).length;
+  const fatHoje = somaEntre(hoje, hoje);
+  const fatMes = somaEntre(mes.inicio, hoje);
+  const diaEquivalente = somarDias(mesPassado.inicio, Number(hoje.slice(8)) - 1);
+  const fatMesPassadoAteHoje = somaEntre(mesPassado.inicio, diaEquivalente < mesPassado.fim ? diaEquivalente : mesPassado.fim);
+  const variacao = fatMesPassadoAteHoje ? Math.round(((fatMes - fatMesPassadoAteHoje) / fatMesPassadoAteHoje) * 100) : null;
+  const atendimentosMes = contaEntre(mes.inicio, hoje);
+
+  const grafico = Array.from({ length: 14 }, (_, i) => {
+    const d = somarDias(iniGrafico, i);
+    return { rotulo: d.slice(8), detalhe: formatarDia(d), valor: somaEntre(d, d) };
+  });
+
+  const agora = new Date();
+  const proximos = agendamentosHoje.filter((a) => a.fim > agora && (a.status === "AGENDADO" || a.status === "CONFIRMADO"));
+  const estoqueBaixo = produtos.filter((p) => p.estoque <= p.estoqueMinimo);
+  const semana = Array.from({ length: 7 }, (_, i) => somarDias(hoje, i).slice(5));
+  const aniversariantes = clientes.filter((c) => c.nascimento && semana.includes(c.nascimento.slice(5)));
+  const hora = Number(horaLocal(agora).slice(0, 2));
+  const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="titulo first-letter:uppercase">{formatarDiaExtenso(dia)}</h1>
-        <div className="flex gap-1">
-          <Link className="btn-secundario" href={`/painel?dia=${somarDias(dia, -1)}`}>←</Link>
-          <Link className="btn-secundario" href="/painel">Hoje</Link>
-          <Link className="btn-secundario" href={`/painel?dia=${somarDias(dia, 1)}`}>→</Link>
+    <div>
+      <Cabecalho
+        titulo={`${saudacao}, ${sessao.nome.split(" ")[0]}`}
+        descricao={`Resumo da ${barbearia.nome} hoje`}
+        acoes={
+          <>
+            <Link href="/painel/comandas/nova" className="btn-secundario">
+              <ReceiptText className="size-4" /> Nova venda
+            </Link>
+            <Link href="/painel/agenda/novo" className="btn-destaque">
+              <CalendarDays className="size-4" /> Agendar
+            </Link>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Indicador rotulo="Faturado hoje" valor={formatarDinheiro(fatHoje)} icone={CircleDollarSign} destaque detalhe={`${contaEntre(hoje, hoje)} venda(s) fechada(s)`} />
+        <Indicador rotulo="Atendimentos hoje" valor={agendamentosHoje.length} icone={CalendarDays} detalhe={`${proximos.length} ainda por vir`} />
+        <Indicador
+          rotulo="Faturado no mês"
+          valor={formatarDinheiro(fatMes)}
+          icone={TrendingUp}
+          detalhe={variacao === null ? "Sem comparação com o mês passado" : `${variacao >= 0 ? "▲" : "▼"} ${Math.abs(variacao)}% vs. mesmo período do mês passado`}
+        />
+        <Indicador rotulo="Ticket médio do mês" valor={formatarDinheiro(atendimentosMes ? Math.round(fatMes / atendimentosMes) : 0)} icone={ReceiptText} detalhe={`${atendimentosMes} venda(s) no mês`} />
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_380px]">
+        <div className="space-y-4">
+          <Secao titulo="Faturamento dos últimos 14 dias" acoes={<Link href="/painel/relatorios" className="text-sm font-semibold text-latao-700 hover:underline">Relatórios</Link>}>
+            <GraficoBarras dados={grafico} titulo="Faturamento por dia nos últimos 14 dias" />
+          </Secao>
+
+          <Secao titulo="Próximos atendimentos de hoje" acoes={<Link href="/painel/agenda" className="text-sm font-semibold text-latao-700 hover:underline">Ver agenda</Link>}>
+            {proximos.length === 0 ? (
+              <Vazio icone={CalendarDays} titulo="Nenhum atendimento pela frente hoje" texto={`Divulgue seu link de agendamento: /b/${barbearia.slug}`} />
+            ) : (
+              <ul className="divide-y divide-black/[0.06]">
+                {proximos.slice(0, 8).map((a) => (
+                  <li key={a.id}>
+                    <Link href={`/painel/agendamentos/${a.id}`} className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-fundo">
+                      <span className="numero w-14 text-lg">{horaLocal(a.inicio)}</span>
+                      <Avatar nome={a.barbeiro.nome} foto={a.barbeiro.foto} tamanho={30} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold">{a.cliente.nome}</span>
+                        <span className="block truncate text-sm text-couro-400">{a.servico.nome} com {a.barbeiro.nome}</span>
+                      </span>
+                      {a.status === "CONFIRMADO" ? <Etiqueta tom="azul">Confirmado</Etiqueta> : <Etiqueta tom="latao">Agendado</Etiqueta>}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Secao>
         </div>
-        <form className="flex gap-1">
-          <input key={dia} type="date" name="dia" defaultValue={dia} className="input w-auto" />
-          <button className="btn-secundario">Ir</button>
-        </form>
-        <Link className="btn-primario ml-auto" href={`/painel/novo?dia=${dia}`}>+ Novo agendamento</Link>
-      </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Resumo titulo="Agendamentos" valor={String(ativos.length)} />
-        <Resumo titulo="Concluídos" valor={String(concluidos.length)} />
-        <Resumo titulo="Faturado" valor={formatarDinheiro(faturado)} />
-        <Resumo titulo="Previsto no dia" valor={formatarDinheiro(previsto)} />
-      </div>
+        <div className="space-y-4">
+          <Secao titulo="Caixa">
+            {caixa ? (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-couro-700">
+                  <Etiqueta tom="verde">Aberto</Etiqueta> desde {horaLocal(caixa.abertoEm)}
+                </p>
+                <Link href="/painel/caixa" className="btn-secundario btn-pequeno">Ver caixa</Link>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-couro-400">O caixa de hoje ainda não foi aberto.</p>
+                <Link href="/painel/caixa" className="btn-primario btn-pequeno"><Wallet className="size-3.5" /> Abrir caixa</Link>
+              </div>
+            )}
+            {abertas > 0 && (
+              <Link href="/painel/comandas" className="mt-3 flex items-center justify-between rounded-xl bg-latao-50 px-3 py-2.5 text-sm font-medium text-latao-700">
+                {abertas} comanda(s) aberta(s) aguardando pagamento <ArrowRight className="size-4" />
+              </Link>
+            )}
+          </Secao>
 
-      <div className="card flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-stone-600">Link de agendamento para os clientes:</span>
-        <Link href={`/b/${barbearia.slug}`} target="_blank" className="font-medium text-amber-700 underline">
-          /b/{barbearia.slug}
-        </Link>
-      </div>
+          <Secao titulo="Avisos">
+            <ul className="space-y-2.5 text-sm">
+              {estoqueBaixo.length > 0 && (
+                <Aviso href="/painel/produtos" icone={Package} texto={`${estoqueBaixo.length} produto(s) com estoque baixo: ${estoqueBaixo.slice(0, 3).map((p) => p.nome).join(", ")}`} />
+              )}
+              {contas.map((c) => (
+                <Aviso
+                  key={c.id}
+                  href="/painel/financeiro"
+                  icone={TriangleAlert}
+                  alerta={c.vencimento < hoje}
+                  texto={`${c.descricao}: ${formatarDinheiro(c.valorCentavos)} ${c.vencimento < hoje ? "venceu" : "vence"} em ${formatarDia(c.vencimento)}`}
+                />
+              ))}
+              {assinaturasVencidas > 0 && (
+                <Aviso href="/painel/assinaturas" icone={Crown} alerta texto={`${assinaturasVencidas} assinatura(s) com mensalidade atrasada`} />
+              )}
+              {estoqueBaixo.length === 0 && contas.length === 0 && assinaturasVencidas === 0 && (
+                <li className="text-couro-400">Tudo em dia por aqui.</li>
+              )}
+            </ul>
+          </Secao>
 
-      {barbeiros.length === 0 ? (
-        <div className="card text-stone-600">
-          Cadastre seus <Link href="/painel/barbeiros" className="text-amber-700 underline">barbeiros</Link> e{" "}
-          <Link href="/painel/servicos" className="text-amber-700 underline">serviços</Link> para começar.
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {barbeiros.map((barbeiro) => {
-            const doBarbeiro = agendamentos.filter((a) => a.barbeiroId === barbeiro.id);
-            return (
-              <section key={barbeiro.id} className="card space-y-3">
-                <h2 className="font-semibold">
-                  {barbeiro.nome}{" "}
-                  <span className="text-sm font-normal text-stone-500">
-                    ({doBarbeiro.filter((a) => a.status !== "CANCELADO").length})
-                  </span>
-                </h2>
-                {doBarbeiro.length === 0 && <p className="text-sm text-stone-500">Nenhum agendamento.</p>}
-                {doBarbeiro.map((a) => {
-                  const status = STATUS_AGENDAMENTO[a.status];
-                  return (
-                    <article
-                      key={a.id}
-                      className={`rounded-lg border border-stone-200 p-3 text-sm ${a.status === "CANCELADO" ? "opacity-60" : ""}`}
+          <Secao titulo="Aniversariantes da semana">
+            {aniversariantes.length === 0 ? (
+              <p className="text-sm text-couro-400">Nenhum aniversário nos próximos 7 dias.</p>
+            ) : (
+              <ul className="space-y-2">
+                {aniversariantes.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between gap-2 text-sm">
+                    <Link href={`/painel/clientes/${c.id}`} className="flex items-center gap-2 font-medium hover:underline">
+                      <Cake className="size-4 text-latao-600" /> {c.nome}
+                      <span className="text-couro-400">{formatarDia(`2000-${c.nascimento!.slice(5)}`).slice(0, 5)}</span>
+                    </Link>
+                    <a
+                      href={linkWhatsApp(c.telefone, `Feliz aniversário, ${c.nome.split(" ")[0]}! 🎉 A equipe da ${barbearia.nome} te deseja um ótimo dia. Passa aqui pra ficar na régua!`)}
+                      target="_blank"
+                      className="text-xs font-semibold text-emerald-700 hover:underline"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-semibold">
-                            {horaLocal(a.inicio)}–{horaLocal(a.fim)} · {a.cliente.nome}
-                          </p>
-                          <p className="text-stone-600">
-                            {a.servico.nome} · {formatarDinheiro(a.precoCentavos)}
-                            {a.origem === "ONLINE" && " · online"}
-                          </p>
-                          {a.formaPagamento && (
-                            <p className="text-stone-500">Pago com {FORMAS_PAGAMENTO[a.formaPagamento]}</p>
-                          )}
-                          {a.observacao && <p className="text-stone-500 italic">{a.observacao}</p>}
-                        </div>
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${status.cor}`}>
-                          {status.rotulo}
-                        </span>
-                      </div>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-1">
-                        {a.status === "AGENDADO" ? (
-                          <>
-                            <form action={mudarStatus} className="flex gap-1">
-                              <input type="hidden" name="id" value={a.id} />
-                              <input type="hidden" name="status" value="CONCLUIDO" />
-                              <select name="formaPagamento" className="input w-auto py-1 text-xs" defaultValue="PIX">
-                                {Object.entries(FORMAS_PAGAMENTO).map(([valor, rotulo]) => (
-                                  <option key={valor} value={valor}>{rotulo}</option>
-                                ))}
-                              </select>
-                              <button className="btn-primario px-2 py-1 text-xs">Concluir</button>
-                            </form>
-                            <BotaoStatus id={a.id} status="FALTOU" rotulo="Faltou" />
-                            <BotaoStatus id={a.id} status="CANCELADO" rotulo="Cancelar" />
-                          </>
-                        ) : (
-                          <BotaoStatus id={a.id} status="AGENDADO" rotulo="Reabrir" />
-                        )}
-                        <a
-                          href={linkWhatsApp(
-                            a.cliente.telefone,
-                            `Olá ${a.cliente.nome}! Confirmando seu horário na ${barbearia.nome}: ${formatarDiaExtenso(dia)} às ${horaLocal(a.inicio)} com ${barbeiro.nome}.`,
-                          )}
-                          target="_blank"
-                          className="btn-secundario px-2 py-1 text-xs"
-                          title={formatarTelefone(a.cliente.telefone)}
-                        >
-                          WhatsApp
-                        </a>
-                      </div>
-                    </article>
-                  );
-                })}
-              </section>
-            );
-          })}
+                      Parabenizar
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Secao>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-function Resumo({ titulo, valor }: { titulo: string; valor: string }) {
+function Aviso({ href, icone: Icone, texto, alerta }: { href: string; icone: typeof Package; texto: string; alerta?: boolean }) {
   return (
-    <div className="card">
-      <p className="text-xs uppercase tracking-wide text-stone-500">{titulo}</p>
-      <p className="text-xl font-bold">{valor}</p>
-    </div>
-  );
-}
-
-function BotaoStatus({ id, status, rotulo }: { id: string; status: string; rotulo: string }) {
-  return (
-    <form action={mudarStatus}>
-      <input type="hidden" name="id" value={id} />
-      <input type="hidden" name="status" value={status} />
-      <button className="btn-secundario px-2 py-1 text-xs">{rotulo}</button>
-    </form>
+    <li>
+      <Link href={href} className="flex items-start gap-2.5 rounded-xl p-1 hover:bg-fundo">
+        <Icone className={`mt-0.5 size-4 shrink-0 ${alerta ? "text-poste-vermelho" : "text-latao-600"}`} />
+        <span>{texto}</span>
+      </Link>
+    </li>
   );
 }

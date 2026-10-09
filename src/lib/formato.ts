@@ -24,16 +24,19 @@ export function linkWhatsApp(digitos: string, mensagem?: string): string {
   return `https://wa.me/${numero}${mensagem ? `?text=${encodeURIComponent(mensagem)}` : ""}`;
 }
 
-export const STATUS_AGENDAMENTO: Record<string, { rotulo: string; cor: string }> = {
-  AGENDADO: { rotulo: "Agendado", cor: "bg-sky-100 text-sky-800" },
-  CONCLUIDO: { rotulo: "Concluído", cor: "bg-emerald-100 text-emerald-800" },
-  CANCELADO: { rotulo: "Cancelado", cor: "bg-stone-200 text-stone-600" },
-  FALTOU: { rotulo: "Faltou", cor: "bg-rose-100 text-rose-800" },
-};
-
 export const FORMAS_PAGAMENTO: Record<string, string> = {
   DINHEIRO: "Dinheiro",
   PIX: "Pix",
   CARTAO_DEBITO: "Cartão de débito",
   CARTAO_CREDITO: "Cartão de crédito",
 };
+
+export const NOME_FORMA: Record<string, string> = { ...FORMAS_PAGAMENTO, SEM_COBRANCA: "Sem cobrança (plano)" };
+
+/** Cor de texto legível (escura ou branca) sobre um fundo hexadecimal. */
+export function corDoTexto(hex: string): string {
+  const v = hex.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const luminancia = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminancia > 0.179 ? "#14100e" : "#ffffff";
+}

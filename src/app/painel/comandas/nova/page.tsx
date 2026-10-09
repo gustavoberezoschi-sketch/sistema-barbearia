@@ -1,0 +1,41 @@
+import type { Metadata } from "next";
+import { FormAcao } from "@/components/FormAcao";
+import { Cabecalho } from "@/components/ui";
+import { exigirSessao } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { formatarTelefone } from "@/lib/formato";
+import { novaComanda } from "../actions";
+
+export const metadata: Metadata = { title: "Nova comanda" };
+
+export default async function NovaComanda() {
+  const sessao = await exigirSessao();
+  const [clientes, barbeiros] = await Promise.all([
+    db.cliente.findMany({ where: { barbeariaId: sessao.barbeariaId }, orderBy: { nome: "asc" } }),
+    db.barbeiro.findMany({ where: { barbeariaId: sessao.barbeariaId, ativo: true }, orderBy: { nome: "asc" } }),
+  ]);
+  return (
+    <div className="mx-auto max-w-xl">
+      <Cabecalho titulo="Nova comanda" descricao="Para atendimento sem agendamento ou venda de produto no balcão." voltar={{ href: "/painel/comandas", rotulo: "Comandas" }} />
+      <FormAcao acao={novaComanda} className="card grid gap-4">
+        <div>
+          <label className="label" htmlFor="clienteId">Cliente</label>
+          <select id="clienteId" name="clienteId" className="input">
+            <option value="">Cliente avulso (sem cadastro)</option>
+            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome} · {formatarTelefone(c.telefone)}</option>)}
+          </select>
+        </div>
+        {!sessao.barbeiroId && (
+          <div>
+            <label className="label" htmlFor="barbeiroId">Barbeiro responsável</label>
+            <select id="barbeiroId" name="barbeiroId" className="input">
+              <option value="">Nenhum (venda do balcão)</option>
+              {barbeiros.map((b) => <option key={b.id} value={b.id}>{b.nome}</option>)}
+            </select>
+          </div>
+        )}
+        <button className="btn-destaque">Abrir comanda</button>
+      </FormAcao>
+    </div>
+  );
+}

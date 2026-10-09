@@ -2,7 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
-import { criarSessao, encerrarSessao } from "@/lib/auth";
+import { type Papel, criarSessao, encerrarSessao } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function entrar(_estado: string | null, form: FormData): Promise<string | null> {
@@ -14,8 +14,15 @@ export async function entrar(_estado: string | null, form: FormData): Promise<st
     return "E-mail ou senha incorretos.";
   }
 
-  await criarSessao({ usuarioId: usuario.id, barbeariaId: usuario.barbeariaId, nome: usuario.nome });
-  redirect("/painel");
+  const papel = (["DONO", "GERENTE", "BARBEIRO"].includes(usuario.papel) ? usuario.papel : "DONO") as Papel;
+  await criarSessao({
+    usuarioId: usuario.id,
+    barbeariaId: usuario.barbeariaId,
+    nome: usuario.nome,
+    papel,
+    barbeiroId: usuario.barbeiroId,
+  });
+  redirect(papel === "BARBEIRO" ? "/painel/agenda" : "/painel");
 }
 
 export async function sair() {

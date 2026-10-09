@@ -59,3 +59,26 @@ export function formatarDiaExtenso(dia: string): string {
     month: "long",
   }).format(criarDataHora(dia, "12:00"));
 }
+
+export function somarMeses(dia: string, meses: number): string {
+  const [a, m, d] = dia.split("-").map(Number);
+  const alvo = new Date(Date.UTC(a, m - 1 + meses, 1));
+  const ultimoDia = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  alvo.setUTCDate(Math.min(d, ultimoDia));
+  return alvo.toISOString().slice(0, 10);
+}
+
+/** "09/10/2026" */
+export function formatarDia(dia: string): string {
+  return dia.split("-").reverse().join("/");
+}
+
+export function formatarDataHora(data: Date): string {
+  return `${formatarDia(diaLocal(data))} ${horaLocal(data)}`;
+}
+
+/** Primeiro e último dia do mês de `dia`. */
+export function limitesDoMes(dia: string): { inicio: string; fim: string } {
+  const inicio = `${dia.slice(0, 8)}01`;
+  return { inicio, fim: somarDias(somarMeses(inicio, 1), -1) };
+}

@@ -1,37 +1,40 @@
 import Link from "next/link";
+import { Scissors } from "lucide-react";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export default async function Inicio() {
-  const barbearias = await db.barbearia.findMany({ orderBy: { nome: "asc" } });
+  const barbearias = await db.barbearia.findMany({ orderBy: { nome: "asc" }, select: { id: true, nome: true, slug: true, endereco: true, logo: true } });
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-6 p-6">
+    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-8 p-6">
       <div>
-        <h1 className="text-3xl font-bold">✂️ Sistema Barbearia</h1>
-        <p className="mt-2 text-stone-600">Agende seu horário ou acesse o painel da sua barbearia.</p>
+        <span className="mb-5 grid size-12 place-items-center rounded-2xl bg-couro-900 text-latao-500"><Scissors className="size-6" /></span>
+        <h1 className="titulo">Agende seu horário</h1>
+        <p className="mt-1 text-couro-400">Escolha a barbearia.</p>
       </div>
-
       {barbearias.length > 0 && (
-        <div className="card space-y-2">
-          <h2 className="font-semibold">Agendar horário</h2>
+        <ul className="space-y-2">
           {barbearias.map((b) => (
-            <Link
-              key={b.id}
-              href={`/b/${b.slug}`}
-              className="block rounded-lg border border-stone-200 px-4 py-3 hover:border-amber-600 hover:bg-amber-50"
-            >
-              <span className="font-medium">{b.nome}</span>
-              {b.endereco && <span className="block text-sm text-stone-500">{b.endereco}</span>}
-            </Link>
+            <li key={b.id}>
+              <Link href={`/b/${b.slug}`} className="card flex items-center gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-md">
+                {b.logo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={b.logo} alt="" className="size-12 rounded-xl object-cover" />
+                ) : (
+                  <span className="grid size-12 place-items-center rounded-xl bg-latao-100 font-display text-xl font-bold text-latao-700">{b.nome[0]}</span>
+                )}
+                <span>
+                  <span className="block font-semibold">{b.nome}</span>
+                  {b.endereco && <span className="text-sm text-couro-400">{b.endereco}</span>}
+                </span>
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-
-      <Link href="/login" className="btn-secundario">
-        Entrar no painel da barbearia
-      </Link>
+      <Link href="/login" className="text-center text-sm font-semibold text-couro-400 hover:text-tinta">Sou da barbearia: entrar no painel</Link>
     </main>
   );
 }

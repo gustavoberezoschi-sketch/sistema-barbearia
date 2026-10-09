@@ -4,26 +4,40 @@ Sistema de agendamento online e gestão para barbearias (no estilo CashBarber).
 É **multi-barbearia**: um único sistema atende várias barbearias, cada uma com
 o próprio login, os próprios dados e o próprio link de agendamento.
 
-| Cliente agendando pelo celular | Agenda do dia | Relatórios e comissões |
-| --- | --- | --- |
-| ![](docs/telas/agendamento-cliente.png) | ![](docs/telas/agenda.png) | ![](docs/telas/relatorios.png) |
+| Início | Agenda | Comanda | Página do cliente |
+| --- | --- | --- | --- |
+| ![](docs/telas/inicio.png) | ![](docs/telas/agenda.png) | ![](docs/telas/comanda.png) | ![](docs/telas/agendamento-cliente.png) |
 
-## O que já funciona (MVP)
+## Funções
 
-**Página pública de agendamento** — `/b/<nome-da-barbearia>`
-- O cliente escolhe o serviço, o barbeiro (ou "sem preferência"), o dia e o horário livre
-- Informa nome e WhatsApp; o cadastro do cliente é criado automaticamente
-- Só mostra horários realmente livres (respeita a duração do serviço e o horário de funcionamento)
-- Proteção contra dois clientes reservarem o mesmo horário ao mesmo tempo
+**Dia a dia**
+- **Início:** faturamento do dia e do mês (com comparação), gráfico de 14 dias, próximos atendimentos, avisos (estoque baixo, contas vencendo, mensalidades atrasadas) e aniversariantes
+- **Agenda em grade:** uma coluna por barbeiro, clique num horário vazio para agendar, encaixe, remarcação, confirmação/lembrete por WhatsApp, falta e cancelamento
+- **Folgas e bloqueios:** almoço, folga, férias ou feriado (por barbeiro ou da barbearia toda)
+- **Comandas:** serviços + produtos, desconto, cashback, forma de pagamento, recibo por WhatsApp e estorno
+- **Caixa:** abertura com troco, suprimento, sangria, despesas, totais por forma de pagamento e fechamento com conferência do dinheiro
 
-**Painel da barbearia** — `/login`
-- **Agenda:** visão do dia por barbeiro, com faturamento do dia, ações de concluir (com forma de pagamento), faltou, cancelar e botão de WhatsApp para confirmar com o cliente
-- **Novo agendamento** pelo balcão, com opção de encaixe
-- **Clientes:** busca, histórico de atendimentos, total gasto e última visita
-- **Serviços:** preço e duração
-- **Barbeiros:** com percentual de comissão
-- **Relatórios:** faturamento, ticket médio, comissão a pagar por barbeiro, serviços mais vendidos e formas de pagamento
-- **Configurações:** dados da barbearia, horário de funcionamento por dia da semana, intervalo entre horários e até quantos dias à frente o cliente pode agendar
+**Clientes**
+- Ficha completa: visitas, total gasto, ticket médio, frequência, serviço preferido, faltas, cashback e histórico
+- Filtros: sumidos há 45+ dias, assinantes, com cashback
+- **Clube de assinatura:** planos mensais (ilimitados ou com limite de usos), serviços inclusos saem sem cobrança na comanda, controle de mensalidades e cobrança por WhatsApp
+- **Cashback:** % do valor pago vira crédito para a próxima visita
+
+**Cadastros**
+- **Serviços:** categoria, descrição, foto, duração, comissão específica, quais barbeiros fazem e se aparece online
+- **Produtos e estoque:** custo, margem, estoque mínimo, entradas, contagem e histórico
+- **Equipe:** foto, comissão de serviços e de produtos, e login próprio do barbeiro (vê só a agenda, as comandas e as comissões dele)
+
+**Gestão**
+- **Financeiro:** contas a pagar (com recorrência), resultado do mês (entradas − comissões − despesas)
+- **Relatórios:** faturamento por dia, comissões por barbeiro, serviços e produtos mais vendidos, formas de pagamento, % de agendamento online e de faltas
+- **Configurações:** logo, foto de capa, cor da marca, apresentação, Instagram, horários, intervalo, antecedência, prazo de cancelamento e cashback
+
+**Página do cliente** (`/b/<barbearia>`)
+- Capa, logo, endereço com mapa, WhatsApp, Instagram, horários e equipe
+- Serviços com foto e descrição, escolha do barbeiro (só quem faz o serviço), dia e horário livres
+- Depois de agendar: salvar na agenda do celular e link para ver ou cancelar o horário
+- Planos do clube de assinatura com botão "Quero assinar"
 
 ## Tecnologias
 
@@ -103,18 +117,14 @@ npm run dev
 ```
 
 Abra http://localhost:3000. Logins da demonstração (senha `123456`):
-`dono@navalha.com` (`/b/navalha-de-ouro`) e `dono@corteforte.com` (`/b/corte-forte`).
+`dono@navalha.com` (`/b/navalha-de-ouro`), `dono@corteforte.com` (`/b/corte-forte`) e o barbeiro `carlos@navalha.com`.
 
 Também dá para cadastrar barbearias pelo terminal com `npm run criar-barbearia`.
 
 ## Próximas etapas sugeridas
 
-- [ ] Lembretes automáticos por WhatsApp (1 dia antes / 2 horas antes)
-- [ ] Cliente cancelar ou remarcar pelo link
-- [ ] Folgas e horários individuais por barbeiro (bloqueio de agenda)
-- [ ] Comanda com venda de produtos e controle de estoque
-- [ ] Caixa (abertura/fechamento) e contas a pagar
-- [ ] Planos de assinatura (ex.: corte ilimitado mensal) com cobrança recorrente via Pix/cartão
-- [ ] Programa de fidelidade / cashback
-- [ ] Login individual para cada barbeiro ver a própria agenda e comissão
+- [ ] Lembretes automáticos por WhatsApp (precisa de uma conta na API do WhatsApp)
+- [ ] Cobrança automática das assinaturas no cartão/Pix (precisa de conta no Mercado Pago ou Asaas)
+- [ ] Emissão de nota fiscal de serviço (NFS-e)
+- [ ] Pacotes de serviços pré-pagos e vale-presente
 - [ ] Controle das mensalidades das barbearias clientes na área /admin

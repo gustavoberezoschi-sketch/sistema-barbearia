@@ -1,140 +1,154 @@
+import type { Metadata } from "next";
+import { GraficoBarras } from "@/components/GraficoBarras";
+import { Cabecalho, Indicador, Secao } from "@/components/ui";
 import { exigirSessao } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { FORMAS_PAGAMENTO, formatarDinheiro } from "@/lib/formato";
-import { criarDataHora, diaLocal, diaValido, somarDias } from "@/lib/tempo";
+import { NOME_FORMA, formatarDinheiro } from "@/lib/formato";
+import { numerosDoPeriodo } from "@/lib/relatorios";
+import { diaLocal, diaValido, formatarDia, somarDias } from "@/lib/tempo";
 
+export const metadata: Metadata = { title: "Relatórios" };
 export const dynamic = "force-dynamic";
 
-export default async function Relatorios({
-  searchParams,
-}: {
-  searchParams: Promise<{ de?: string; ate?: string }>;
-}) {
-  const { barbeariaId } = await exigirSessao();
-  const params = await searchParams;
+export default async function Relatorios({ searchParams }: { searchParams: Promise<{ de?: string; ate?: string }> }) {
+  const sessao = await exigirSessao();
+  const p = await searchParams;
   const hoje = diaLocal();
-  const de = params.de && diaValido(params.de) ? params.de : `${hoje.slice(0, 8)}01`;
-  const ate = params.ate && diaValido(params.ate) ? params.ate : hoje;
+  const de = p.de && diaValido(p.de) ? p.de : `${hoje.slice(0, 8)}01`;
+  const ate = p.ate && diaValido(p.ate) && p.ate >= de ? p.ate : hoje;
+  const barbeiro = sessao.barbeiroId;
+  const n = await numerosDoPeriodo(sessao.barbeariaId, de, ate, barbeiro);
 
-  const agendamentos = await db.agendamento.findMany({
-    where: {
-      barbeariaId,
-      inicio: { gte: criarDataHora(de, "00:00"), lt: criarDataHora(somarDias(ate, 1), "00:00") },
-    },
-    include: { barbeiro: true, servico: true },
-  });
-
-  const concluidos = agendamentos.filter((a) => a.status === "CONCLUIDO");
-  const total = concluidos.reduce((s, a) => s + a.precoCentavos, 0);
-  const faltas = agendamentos.filter((a) => a.status === "FALTOU").length;
-  const cancelados = agendamentos.filter((a) => a.status === "CANCELADO").length;
-
-  const porBarbeiro = new Map<string, { nome: string; pct: number; qtd: number; total: number }>();
-  const porServico = new Map<string, { qtd: number; total: number }>();
-  const porPagamento = new Map<string, number>();
-  for (const a of concluidos) {
-    const b = porBarbeiro.get(a.barbeiroId) ?? { nome: a.barbeiro.nome, pct: a.barbeiro.comissaoPct, qtd: 0, total: 0 };
-    b.qtd++;
-    b.total += a.precoCentavos;
-    porBarbeiro.set(a.barbeiroId, b);
-
-    const s = porServico.get(a.servico.nome) ?? { qtd: 0, total: 0 };
-    s.qtd++;
-    s.total += a.precoCentavos;
-    porServico.set(a.servico.nome, s);
-
-    const forma = a.formaPagamento ?? "NAO_INFORMADO";
-    porPagamento.set(forma, (porPagamento.get(forma) ?? 0) + a.precoCentavos);
-  }
-  const totalComissoes = [...porBarbeiro.values()].reduce((s, b) => s + Math.round((b.total * b.pct) / 100), 0);
+  const dias: string[] = [];
+  for (let d = de; d <= ate && dias.length < 62; d = somarDias(d, 1)) dias.push(d);
+  const grafico = dias.map((d) => ({ rotulo: d.slice(8), detalhe: formatarDia(d), valor: n.porDia.get(d) ?? 0 }));
+  const totalFormas = Object.values(n.porForma).reduce((s, v) => s + v, 0);
+  const atalhos = [
+    { r: "Hoje", de: hoje, ate: hoje },
+    { r: "7 dias", de: somarDias(hoje, -6), ate: hoje },
+    { r: "Este mês", de: `${hoje.slice(0, 8)}01`, ate: hoje },
+    { r: "30 dias", de: somarDias(hoje, -29), ate: hoje },
+  ];
+  const minhas = barbeiro ? n.porBarbeiro.find((b) => b.id === barbeiro) : null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <h1 className="titulo mr-auto">Relatórios</h1>
-        <form className="flex flex-wrap items-end gap-2">
-          <div>
-            <label className="label">De</label>
-            <input type="date" name="de" defaultValue={de} className="input" />
-          </div>
-          <div>
-            <label className="label">Até</label>
-            <input type="date" name="ate" defaultValue={ate} className="input" />
-          </div>
-          <button className="btn-secundario">Filtrar</button>
-        </form>
-      </div>
+    <div>
+      <Cabecalho
+        titulo={barbeiro ? "Minhas comissões" : "Relatórios"}
+        descricao={`De ${formatarDia(de)} a ${formatarDia(ate)}`}
+        acoes={
+          <form className="flex flex-wrap items-end gap-2">
+            {atalhos.map((a) => (
+              <a key={a.r} href={`?de=${a.de}&ate=${a.ate}`} className={`btn-secundario btn-pequeno ${a.de === de && a.ate === ate ? "border-couro-900" : ""}`}>{a.r}</a>
+            ))}
+            <input type="date" name="de" defaultValue={de} className="input w-auto py-1.5" aria-label="De" />
+            <input type="date" name="ate" defaultValue={ate} className="input w-auto py-1.5" aria-label="Até" />
+            <button className="btn-primario btn-pequeno">Filtrar</button>
+          </form>
+        }
+      />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Card titulo="Faturamento" valor={formatarDinheiro(total)} />
-        <Card titulo="Atendimentos" valor={String(concluidos.length)} />
-        <Card titulo="Ticket médio" valor={formatarDinheiro(concluidos.length ? Math.round(total / concluidos.length) : 0)} />
-        <Card titulo="Comissões" valor={formatarDinheiro(totalComissoes)} />
-        <Card titulo="Faltas / cancelados" valor={`${faltas} / ${cancelados}`} />
-      </div>
+      {barbeiro ? (
+        <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Indicador rotulo="Comissão a receber" valor={formatarDinheiro(minhas?.comissao ?? 0)} destaque />
+          <Indicador rotulo="Atendimentos" valor={n.atendimentos} />
+          <Indicador rotulo="Em serviços" valor={formatarDinheiro(minhas?.servicos ?? 0)} />
+          <Indicador rotulo="Em produtos" valor={formatarDinheiro(minhas?.produtos ?? 0)} />
+        </div>
+      ) : (
+        <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-6">
+          <Indicador rotulo="Faturamento" valor={formatarDinheiro(n.receita)} destaque />
+          <Indicador rotulo="Atendimentos" valor={n.atendimentos} />
+          <Indicador rotulo="Ticket médio" valor={formatarDinheiro(n.comandas.length ? Math.round(n.vendas / n.comandas.length) : 0)} />
+          <Indicador rotulo="Clientes atendidos" valor={n.clientesAtendidos} detalhe={`${n.novosClientes} novo(s) no período`} />
+          <Indicador rotulo="Agendou online" valor={n.agendamentos ? `${Math.round((n.online / n.agendamentos) * 100)}%` : "—"} detalhe={`${n.online} de ${n.agendamentos} agendamentos`} />
+          <Indicador rotulo="Faltas" valor={n.agendamentos ? `${Math.round((n.faltas / n.agendamentos) * 100)}%` : "—"} detalhe={`${n.faltas} falta(s)`} />
+        </div>
+      )}
 
-      <section className="card overflow-x-auto">
-        <h2 className="mb-2 font-semibold">Comissões por barbeiro</h2>
-        <table className="w-full text-sm">
-          <thead className="text-left text-stone-600">
-            <tr>
-              <th className="py-2">Barbeiro</th>
-              <th>Atendimentos</th>
-              <th>Faturado</th>
-              <th>Comissão</th>
-              <th>A pagar</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...porBarbeiro.values()].sort((a, b) => b.total - a.total).map((b) => (
-              <tr key={b.nome} className="border-t border-stone-100">
-                <td className="py-2 font-medium">{b.nome}</td>
-                <td>{b.qtd}</td>
-                <td>{formatarDinheiro(b.total)}</td>
-                <td>{b.pct}%</td>
-                <td className="font-semibold">{formatarDinheiro(Math.round((b.total * b.pct) / 100))}</td>
+      {!barbeiro && (
+        <Secao titulo="Faturamento por dia" className="mb-4">
+          <GraficoBarras dados={grafico} titulo="Faturamento por dia no período" destacarUltimo={ate === hoje} />
+        </Secao>
+      )}
+
+      <Secao titulo={barbeiro ? "Detalhe" : "Comissões por barbeiro"} className="mb-4">
+        <div className="-mx-5 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-couro-400">
+              <tr className="[&>th]:px-5 [&>th]:pb-2 [&>th]:font-medium">
+                <th>Barbeiro</th><th>Atendimentos</th><th>Serviços</th><th>Produtos</th><th className="text-right">Comissão</th>
               </tr>
-            ))}
-            {porBarbeiro.size === 0 && (
-              <tr><td colSpan={5} className="py-2 text-stone-500">Nenhum atendimento concluído no período.</td></tr>
+            </thead>
+            <tbody>
+              {n.porBarbeiro.map((b) => (
+                <tr key={b.id} className="border-t border-black/[0.06] [&>td]:px-5 [&>td]:py-3">
+                  <td className="font-semibold">{b.nome}</td>
+                  <td className="tabular-nums">{b.qtdServicos}</td>
+                  <td className="tabular-nums">{formatarDinheiro(b.servicos)}</td>
+                  <td className="tabular-nums">{formatarDinheiro(b.produtos)}</td>
+                  <td className="text-right font-semibold text-latao-700 tabular-nums">{formatarDinheiro(b.comissao)}</td>
+                </tr>
+              ))}
+              {n.porBarbeiro.length === 0 && (
+                <tr><td colSpan={5} className="px-5 py-3 text-couro-400">Nenhum atendimento fechado no período.</td></tr>
+              )}
+            </tbody>
+            {n.porBarbeiro.length > 1 && (
+              <tfoot>
+                <tr className="border-t border-black/15 font-semibold [&>td]:px-5 [&>td]:py-3">
+                  <td>Total</td>
+                  <td className="tabular-nums">{n.atendimentos}</td>
+                  <td className="tabular-nums">{formatarDinheiro(n.porBarbeiro.reduce((s, b) => s + b.servicos, 0))}</td>
+                  <td className="tabular-nums">{formatarDinheiro(n.porBarbeiro.reduce((s, b) => s + b.produtos, 0))}</td>
+                  <td className="text-right tabular-nums">{formatarDinheiro(n.comissoes)}</td>
+                </tr>
+              </tfoot>
             )}
-          </tbody>
-        </table>
-      </section>
+          </table>
+        </div>
+        <p className="mt-3 text-xs text-couro-400">Serviços inclusos em assinatura contam pelo preço de tabela para a comissão.</p>
+      </Secao>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className="card">
-          <h2 className="mb-2 font-semibold">Serviços mais vendidos</h2>
-          <ul className="space-y-1 text-sm">
-            {[...porServico.entries()].sort((a, b) => b[1].qtd - a[1].qtd).map(([nome, s]) => (
-              <li key={nome} className="flex justify-between">
-                <span>{nome} ({s.qtd})</span>
-                <span>{formatarDinheiro(s.total)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-        <section className="card">
-          <h2 className="mb-2 font-semibold">Formas de pagamento</h2>
-          <ul className="space-y-1 text-sm">
-            {[...porPagamento.entries()].sort((a, b) => b[1] - a[1]).map(([forma, valor]) => (
-              <li key={forma} className="flex justify-between">
-                <span>{FORMAS_PAGAMENTO[forma] ?? "Não informado"}</span>
-                <span>{formatarDinheiro(valor)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Ranking titulo="Serviços mais feitos" itens={n.servicos} />
+        <Ranking titulo="Produtos mais vendidos" itens={n.produtos} vazio="Nenhum produto vendido." />
+        {!barbeiro && (
+          <Secao titulo="Formas de pagamento">
+            {totalFormas === 0 ? (
+              <p className="text-sm text-couro-400">Sem recebimentos no período.</p>
+            ) : (
+              <ul className="space-y-3 text-sm">
+                {Object.entries(n.porForma).sort((a, b) => b[1] - a[1]).map(([f, v]) => (
+                  <li key={f}>
+                    <div className="mb-1 flex justify-between"><span>{NOME_FORMA[f] ?? f}</span><span className="font-semibold tabular-nums">{formatarDinheiro(v)}</span></div>
+                    <div className="h-2 overflow-hidden rounded-full bg-fundo"><div className="h-full rounded-full bg-latao-500" style={{ width: `${(v / totalFormas) * 100}%` }} /></div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Secao>
+        )}
       </div>
     </div>
   );
 }
 
-function Card({ titulo, valor }: { titulo: string; valor: string }) {
+function Ranking({ titulo, itens, vazio = "Nada no período." }: { titulo: string; itens: { nome: string; qtd: number; valor: number }[]; vazio?: string }) {
+  const max = Math.max(1, ...itens.map((i) => i.qtd));
   return (
-    <div className="card">
-      <p className="text-xs uppercase tracking-wide text-stone-500">{titulo}</p>
-      <p className="text-xl font-bold">{valor}</p>
-    </div>
+    <Secao titulo={titulo}>
+      {itens.length === 0 ? (
+        <p className="text-sm text-couro-400">{vazio}</p>
+      ) : (
+        <ul className="space-y-3 text-sm">
+          {itens.slice(0, 8).map((i) => (
+            <li key={i.nome}>
+              <div className="mb-1 flex justify-between gap-2"><span className="truncate">{i.nome} <span className="text-couro-400">· {i.qtd}</span></span><span className="font-semibold tabular-nums">{formatarDinheiro(i.valor)}</span></div>
+              <div className="h-2 overflow-hidden rounded-full bg-fundo"><div className="h-full rounded-full bg-couro-700" style={{ width: `${(i.qtd / max) * 100}%` }} /></div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Secao>
   );
 }

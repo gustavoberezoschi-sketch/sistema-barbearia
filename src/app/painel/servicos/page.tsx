@@ -1,68 +1,94 @@
-import { FormAcao } from "@/components/FormAcao";
-import { exigirSessao } from "@/lib/auth";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Clock, EyeOff, Plus, Scissors } from "lucide-react";
+import { Avatar, Cabecalho, Etiqueta, Vazio } from "@/components/ui";
+import { exigirGestor } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { alternarServico, salvarServico } from "../actions";
+import { formatarDinheiro } from "@/lib/formato";
+import { alternarServico } from "../actions";
+
+export const metadata: Metadata = { title: "Serviços" };
+export const dynamic = "force-dynamic";
 
 export default async function Servicos() {
-  const { barbeariaId } = await exigirSessao();
-  const servicos = await db.servico.findMany({
-    where: { barbeariaId },
-    orderBy: [{ ativo: "desc" }, { nome: "asc" }],
-  });
+  const { barbeariaId } = await exigirGestor();
+  const [servicos, totalBarbeiros] = await Promise.all([
+    db.servico.findMany({
+      where: { barbeariaId },
+      include: { barbeiros: true, _count: { select: { agendamentos: true } } },
+      orderBy: [{ ativo: "desc" }, { categoria: "asc" }, { precoCentavos: "asc" }],
+    }),
+    db.barbeiro.count({ where: { barbeariaId, ativo: true } }),
+  ]);
+  const categorias = [...new Set(servicos.filter((s) => s.ativo).map((s) => s.categoria))];
+  const inativos = servicos.filter((s) => !s.ativo);
 
   return (
-    <div className="space-y-4">
-      <h1 className="titulo">Serviços</h1>
+    <div>
+      <Cabecalho
+        titulo="Serviços"
+        descricao="O cardápio da barbearia: o que aparece para o cliente agendar e entra nas comandas."
+        acoes={<Link href="/painel/servicos/novo" className="btn-destaque"><Plus className="size-4" /> Novo serviço</Link>}
+      />
+      {servicos.length === 0 && (
+        <Vazio icone={Scissors} titulo="Nenhum serviço cadastrado" texto="Comece pelos mais pedidos: corte, barba e o combo." acao={<Link href="/painel/servicos/novo" className="btn-primario">Cadastrar serviço</Link>} />
+      )}
 
-      <FormAcao acao={salvarServico} limparAoSalvar className="card grid items-end gap-3 sm:grid-cols-[1fr_8rem_8rem_auto]">
-        <div>
-          <label className="label">Novo serviço</label>
-          <input name="nome" className="input" placeholder="Corte + barba" required />
-        </div>
-        <div>
-          <label className="label">Preço (R$)</label>
-          <input name="preco" className="input" placeholder="45,00" inputMode="decimal" required />
-        </div>
-        <div>
-          <label className="label">Duração (min)</label>
-          <input name="duracao" type="number" className="input" defaultValue={30} min={5} max={480} required />
-        </div>
-        <button className="btn-primario">Adicionar</button>
-      </FormAcao>
-
-      <div className="space-y-2">
-        {servicos.map((s) => (
-          <div key={s.id} className={`card flex flex-wrap items-end gap-3 ${s.ativo ? "" : "opacity-60"}`}>
-            <FormAcao acao={salvarServico} className="grid flex-1 items-end gap-3 sm:grid-cols-[1fr_8rem_8rem_auto]">
-              <input type="hidden" name="id" value={s.id} />
-              <div>
-                <label className="label">Nome</label>
-                <input name="nome" className="input" defaultValue={s.nome} required />
-              </div>
-              <div>
-                <label className="label">Preço (R$)</label>
-                <input
-                  name="preco"
-                  className="input"
-                  defaultValue={(s.precoCentavos / 100).toFixed(2).replace(".", ",")}
-                  inputMode="decimal"
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">Duração (min)</label>
-                <input name="duracao" type="number" className="input" defaultValue={s.duracaoMin} required />
-              </div>
-              <button className="btn-secundario">Salvar</button>
-            </FormAcao>
-            <form action={alternarServico}>
-              <input type="hidden" name="id" value={s.id} />
-              <button className={s.ativo ? "btn-perigo" : "btn-secundario"}>{s.ativo ? "Desativar" : "Reativar"}</button>
-            </form>
+      {categorias.map((cat) => (
+        <section key={cat} className="mb-8">
+          <h2 className="rotulo mb-3">{cat}</h2>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {servicos.filter((s) => s.ativo && s.categoria === cat).map((s) => (
+              <Link key={s.id} href={`/painel/servicos/${s.id}`} className="card group flex gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-md">
+                {s.foto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.foto} alt="" className="size-20 shrink-0 rounded-xl object-cover" />
+                ) : (
+                  <span className="grid size-20 shrink-0 place-items-center rounded-xl bg-latao-50 text-latao-600"><Scissors className="size-7" /></span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold leading-snug group-hover:text-latao-700">{s.nome}</p>
+                    <p className="numero shrink-0 text-lg">{formatarDinheiro(s.precoCentavos)}</p>
+                  </div>
+                  <p className="mt-0.5 flex items-center gap-1 text-xs text-couro-400">
+                    <Clock className="size-3" /> {s.duracaoMin} min · {s._count.agendamentos} agendamento(s)
+                    {s.comissaoPct !== null && ` · comissão ${s.comissaoPct}%`}
+                  </p>
+                  {s.descricao && <p className="mt-1.5 line-clamp-2 text-sm text-couro-700">{s.descricao}</p>}
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {!s.exibirOnline && <Etiqueta><EyeOff className="mr-1 size-3" /> Só no balcão</Etiqueta>}
+                    {s.barbeiros.length > 0 && s.barbeiros.length < totalBarbeiros ? (
+                      <span className="flex -space-x-1.5">
+                        {s.barbeiros.map((b) => <span key={b.id} className="rounded-full ring-2 ring-white" title={b.nome}><Avatar nome={b.nome} foto={b.foto} tamanho={22} /></span>)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-couro-400">Todos os barbeiros</span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
-        ))}
-        {servicos.length === 0 && <p className="text-stone-500">Nenhum serviço cadastrado.</p>}
-      </div>
+        </section>
+      ))}
+
+      {inativos.length > 0 && (
+        <section>
+          <h2 className="rotulo mb-3">Desativados</h2>
+          <ul className="card divide-y divide-black/[0.06] py-1">
+            {inativos.map((s) => (
+              <li key={s.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <span className="text-couro-400">{s.nome} · {formatarDinheiro(s.precoCentavos)}</span>
+                <form action={alternarServico}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <button className="btn-secundario btn-pequeno">Reativar</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

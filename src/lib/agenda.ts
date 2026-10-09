@@ -5,13 +5,38 @@ import { criarDataHora, diaDaSemana, horaParaMinutos, minutosParaHora } from "./
 type Cliente = Prisma.TransactionClient | typeof db;
 
 // Status que ocupam o horário do barbeiro.
-export const STATUS_OCUPADOS = ["AGENDADO", "CONCLUIDO"];
+export const STATUS_OCUPADOS = ["AGENDADO", "CONFIRMADO", "CONCLUIDO"];
 
 export type Horario = { hora: string; barbeiroIds: string[] };
 
+/** Barbeiros ativos que fazem o serviço (serviço sem barbeiros definidos = todos fazem). */
+export async function barbeirosDoServico(
+  barbeariaId: string,
+  servicoId: string,
+  tx: Cliente = db,
+  barbeiroId?: string | null,
+) {
+  const servico = await tx.servico.findFirst({
+    where: { id: servicoId, barbeariaId, ativo: true },
+    include: { barbeiros: { select: { id: true } } },
+  });
+  if (!servico) return { servico: null, barbeiros: [] };
+  const restritos = servico.barbeiros.map((b) => b.id);
+  const barbeiros = await tx.barbeiro.findMany({
+    where: {
+      barbeariaId,
+      ativo: true,
+      ...(barbeiroId ? { id: barbeiroId } : {}),
+      ...(restritos.length ? { id: barbeiroId ? { in: restritos.filter((r) => r === barbeiroId) } : { in: restritos } } : {}),
+    },
+    orderBy: { nome: "asc" },
+  });
+  return { servico, barbeiros };
+}
+
 /**
  * Lista os horários livres de um dia para um serviço.
- * Se barbeiroId for null, considera qualquer barbeiro ativo ("sem preferência").
+ * Se barbeiroId for null, considera qualquer barbeiro que faça o serviço ("sem preferência").
  */
 export async function horariosDisponiveis(
   params: { barbeariaId: string; servicoId: string; barbeiroId: string | null; dia: string },
@@ -19,30 +44,33 @@ export async function horariosDisponiveis(
 ): Promise<Horario[]> {
   const { barbeariaId, servicoId, barbeiroId, dia } = params;
 
-  const [barbearia, funcionamento, servico, barbeiros] = await Promise.all([
+  const [barbearia, funcionamento, { servico, barbeiros }] = await Promise.all([
     tx.barbearia.findUnique({ where: { id: barbeariaId } }),
     tx.horarioFuncionamento.findUnique({
       where: { barbeariaId_diaSemana: { barbeariaId, diaSemana: diaDaSemana(dia) } },
     }),
-    tx.servico.findFirst({ where: { id: servicoId, barbeariaId, ativo: true } }),
-    tx.barbeiro.findMany({
-      where: { barbeariaId, ativo: true, ...(barbeiroId ? { id: barbeiroId } : {}) },
-      orderBy: { nome: "asc" },
-    }),
+    barbeirosDoServico(barbeariaId, servicoId, tx, barbeiroId),
   ]);
   if (!barbearia || !funcionamento || !servico || barbeiros.length === 0) return [];
 
   const abertura = criarDataHora(dia, funcionamento.abre);
   const fechamento = criarDataHora(dia, funcionamento.fecha);
-  const ocupados = await tx.agendamento.findMany({
-    where: {
-      barbeiroId: { in: barbeiros.map((b) => b.id) },
-      status: { in: STATUS_OCUPADOS },
-      inicio: { lt: fechamento },
-      fim: { gt: abertura },
-    },
-    select: { barbeiroId: true, inicio: true, fim: true },
-  });
+  const ids = barbeiros.map((b) => b.id);
+  const [ocupados, bloqueios] = await Promise.all([
+    tx.agendamento.findMany({
+      where: { barbeiroId: { in: ids }, status: { in: STATUS_OCUPADOS }, inicio: { lt: fechamento }, fim: { gt: abertura } },
+      select: { barbeiroId: true, inicio: true, fim: true },
+    }),
+    tx.bloqueio.findMany({
+      where: {
+        barbeariaId,
+        OR: [{ barbeiroId: null }, { barbeiroId: { in: ids } }],
+        inicio: { lt: fechamento },
+        fim: { gt: abertura },
+      },
+      select: { barbeiroId: true, inicio: true, fim: true },
+    }),
+  ]);
 
   const agora = Date.now();
   const duracaoMs = servico.duracaoMin * 60_000;
@@ -58,12 +86,12 @@ export async function horariosDisponiveis(
     const inicio = criarDataHora(dia, hora).getTime();
     if (inicio <= agora) continue;
     const fim = inicio + duracaoMs;
+    const sobrepoe = (a: { inicio: Date; fim: Date }) => a.inicio.getTime() < fim && a.fim.getTime() > inicio;
     const livres = barbeiros
       .filter(
         (b) =>
-          !ocupados.some(
-            (a) => a.barbeiroId === b.id && a.inicio.getTime() < fim && a.fim.getTime() > inicio,
-          ),
+          !ocupados.some((a) => a.barbeiroId === b.id && sobrepoe(a)) &&
+          !bloqueios.some((x) => (x.barbeiroId === null || x.barbeiroId === b.id) && sobrepoe(x)),
       )
       .map((b) => b.id);
     if (livres.length > 0) horarios.push({ hora, barbeiroIds: livres });
@@ -71,34 +99,41 @@ export async function horariosDisponiveis(
   return horarios;
 }
 
-/** Verifica se o barbeiro tem algum agendamento que se sobrepõe ao intervalo. */
+/** Verifica se o barbeiro tem agendamento ou bloqueio que se sobrepõe ao intervalo. */
 export async function temConflito(
   barbeiroId: string,
   inicio: Date,
   fim: Date,
   tx: Cliente = db,
   ignorarId?: string,
-): Promise<boolean> {
-  const conflito = await tx.agendamento.findFirst({
-    where: {
-      barbeiroId,
-      status: { in: STATUS_OCUPADOS },
-      inicio: { lt: fim },
-      fim: { gt: inicio },
-      ...(ignorarId ? { id: { not: ignorarId } } : {}),
-    },
-    select: { id: true },
-  });
-  return conflito !== null;
+): Promise<"agendamento" | "bloqueio" | null> {
+  const barbeiro = await tx.barbeiro.findUniqueOrThrow({ where: { id: barbeiroId }, select: { barbeariaId: true } });
+  const [agendamento, bloqueio] = await Promise.all([
+    tx.agendamento.findFirst({
+      where: {
+        barbeiroId,
+        status: { in: STATUS_OCUPADOS },
+        inicio: { lt: fim },
+        fim: { gt: inicio },
+        ...(ignorarId ? { id: { not: ignorarId } } : {}),
+      },
+      select: { id: true },
+    }),
+    tx.bloqueio.findFirst({
+      where: {
+        barbeariaId: barbeiro.barbeariaId,
+        OR: [{ barbeiroId: null }, { barbeiroId }],
+        inicio: { lt: fim },
+        fim: { gt: inicio },
+      },
+      select: { id: true },
+    }),
+  ]);
+  return agendamento ? "agendamento" : bloqueio ? "bloqueio" : null;
 }
 
 /** Encontra o cliente pelo telefone ou cria um novo. */
-export async function obterOuCriarCliente(
-  barbeariaId: string,
-  nome: string,
-  telefone: string,
-  tx: Cliente = db,
-) {
+export async function obterOuCriarCliente(barbeariaId: string, nome: string, telefone: string, tx: Cliente = db) {
   return tx.cliente.upsert({
     where: { barbeariaId_telefone: { barbeariaId, telefone } },
     update: {},

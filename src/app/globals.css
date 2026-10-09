@@ -1,32 +1,99 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--fonte-texto), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--fonte-titulo), var(--fonte-texto), ui-sans-serif, sans-serif;
+
+  /* Paleta "couro e latão" */
+  --color-couro-950: #14100e;
+  --color-couro-900: #1f1a17;
+  --color-couro-800: #2b2420;
+  --color-couro-700: #3b322c;
+  --color-couro-400: #8f8279;
+  --color-couro-300: #b9ada4;
+  --color-latao-700: #8a6420;
+  --color-latao-600: #a37628;
+  --color-latao-500: #b8862f;
+  --color-latao-100: #f5ecd9;
+  --color-latao-50: #faf6ec;
+  --color-fundo: #f1f1ef;
+  --color-tinta: #26272b;
+  --color-poste-vermelho: #c2412d;
+  --color-poste-azul: #2f5d8a;
+}
+
 @layer base {
   body {
-    @apply bg-stone-100 text-stone-900 antialiased;
+    @apply bg-fundo font-sans text-tinta antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-latao-500;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    @apply accent-couro-900;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @utility card {
-  @apply rounded-xl border border-stone-200 bg-white p-4 shadow-sm;
+  @apply rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_1px_2px_rgba(20,16,14,0.04)];
 }
 @utility input {
-  @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20;
+  @apply w-full rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-sm text-tinta outline-none transition placeholder:text-couro-300 focus:border-latao-500 focus:ring-4 focus:ring-latao-500/15;
 }
 @utility label {
-  @apply mb-1 block text-sm font-medium text-stone-700;
+  @apply mb-1.5 block text-[13px] font-semibold text-couro-700;
 }
 @utility btn {
-  @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
 }
 @utility btn-primario {
-  @apply btn bg-amber-600 text-white hover:bg-amber-700;
+  @apply btn bg-couro-900 text-white shadow-sm hover:bg-couro-700;
+}
+@utility btn-destaque {
+  @apply btn bg-latao-500 text-couro-950 shadow-sm hover:bg-latao-600 hover:text-white;
 }
 @utility btn-secundario {
-  @apply btn border border-stone-300 bg-white text-stone-800 hover:bg-stone-50;
+  @apply btn border border-black/10 bg-white text-tinta hover:border-black/20 hover:bg-black/[0.02];
 }
 @utility btn-perigo {
-  @apply btn border border-rose-200 bg-white text-rose-700 hover:bg-rose-50;
+  @apply btn border border-poste-vermelho/25 bg-white text-poste-vermelho hover:bg-poste-vermelho/5;
+}
+@utility btn-pequeno {
+  @apply px-3 py-1.5 text-xs;
 }
 @utility titulo {
-  @apply text-2xl font-bold tracking-tight;
+  @apply font-display text-[28px] leading-tight font-bold tracking-tight;
+}
+@utility numero {
+  @apply font-display font-bold tabular-nums tracking-tight;
+}
+@utility rotulo {
+  @apply text-[11px] font-semibold tracking-[0.08em] text-couro-400 uppercase;
+}
+
+/* Assinatura visual: listras do poste de barbearia */
+@utility poste {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-poste-vermelho) 0 6px,
+    #fff 6px 10px,
+    var(--color-poste-azul) 10px 16px,
+    #fff 16px 20px
+  );
+  background-size: 28px 28px;
+  animation: girar-poste 1.6s linear infinite;
+}
+@keyframes girar-poste {
+  to {
+    background-position: 28px 0;
+  }
 }

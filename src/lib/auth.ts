@@ -6,7 +6,8 @@ import { limparVariavel } from "./env";
 const COOKIE = "sessao";
 const DURACAO_DIAS = 30;
 
-export type Sessao = { usuarioId: string; barbeariaId: string; nome: string };
+export type Papel = "DONO" | "GERENTE" | "BARBEIRO";
+export type Sessao = { usuarioId: string; barbeariaId: string; nome: string; papel: Papel; barbeiroId: string | null };
 
 function chave() {
   const segredo = limparVariavel(process.env.AUTH_SECRET);
@@ -38,10 +39,13 @@ export async function lerSessao(): Promise<Sessao | null> {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, chave());
+    const papel = (payload.papel as Papel) ?? "DONO";
     return {
       usuarioId: String(payload.usuarioId),
       barbeariaId: String(payload.barbeariaId),
       nome: String(payload.nome),
+      papel,
+      barbeiroId: papel === "BARBEIRO" && payload.barbeiroId ? String(payload.barbeiroId) : null,
     };
   } catch {
     return null;
@@ -52,5 +56,12 @@ export async function lerSessao(): Promise<Sessao | null> {
 export async function exigirSessao(): Promise<Sessao> {
   const sessao = await lerSessao();
   if (!sessao) redirect("/login");
+  return sessao;
+}
+
+/** Páginas e ações que só o dono/gerente pode usar (barbeiro é mandado para a agenda). */
+export async function exigirGestor(): Promise<Sessao> {
+  const sessao = await exigirSessao();
+  if (sessao.papel === "BARBEIRO") redirect("/painel/agenda");
   return sessao;
 }
