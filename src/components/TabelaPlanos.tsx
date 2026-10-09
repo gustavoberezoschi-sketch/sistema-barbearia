@@ -15,7 +15,7 @@ export function TabelaPlanos({ atual, acao }: { atual?: CodigoPlano; acao?: (cod
             {c === atual ? (
               <span className="absolute -top-3 left-6 rounded-full bg-latao-500 px-3 py-0.5 text-xs font-bold text-couro-950">Seu plano</span>
             ) : destaque ? (
-              <span className="absolute -top-3 left-6 rounded-full bg-couro-900 px-3 py-0.5 text-xs font-bold text-white">Mais escolhido</span>
+              <span className="absolute -top-3 left-6 rounded-full bg-couro-900 px-3 py-0.5 text-xs font-bold text-white">Ideal para 2 unidades</span>
             ) : null}
             <p className="font-display text-2xl font-bold">{p.nome}</p>
             <p className="mt-3">
