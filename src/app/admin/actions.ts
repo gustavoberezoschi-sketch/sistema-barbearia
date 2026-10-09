@@ -6,17 +6,18 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ErroCadastro, criarBarbearia, redefinirSenha } from "@/lib/barbearias";
+import { limparVariavel } from "@/lib/env";
 import type { Resultado } from "../painel/actions";
 
 // Área do dono do sistema (você), separada do login das barbearias.
 const COOKIE = "admin";
 
 function chave() {
-  return new TextEncoder().encode(`admin:${process.env.AUTH_SECRET}`);
+  return new TextEncoder().encode(`admin:${limparVariavel(process.env.AUTH_SECRET)}`);
 }
 
 function senhaConfere(senha: string) {
-  const esperada = process.env.ADMIN_SENHA;
+  const esperada = limparVariavel(process.env.ADMIN_SENHA);
   if (!esperada) return false;
   const a = Buffer.from(senha);
   const b = Buffer.from(esperada);
@@ -25,7 +26,7 @@ function senhaConfere(senha: string) {
 
 export async function eAdmin(): Promise<boolean> {
   const token = (await cookies()).get(COOKIE)?.value;
-  if (!token || !process.env.AUTH_SECRET) return false;
+  if (!token || !limparVariavel(process.env.AUTH_SECRET)) return false;
   try {
     await jwtVerify(token, chave());
     return true;
@@ -39,7 +40,7 @@ async function exigirAdmin() {
 }
 
 export async function entrarAdmin(_: Resultado, form: FormData): Promise<Resultado> {
-  if (!process.env.ADMIN_SENHA) return { erro: "Configure a variável ADMIN_SENHA no servidor." };
+  if (!limparVariavel(process.env.ADMIN_SENHA)) return { erro: "Configure a variável ADMIN_SENHA no servidor." };
   if (!senhaConfere(String(form.get("senha") ?? ""))) return { erro: "Senha incorreta." };
   const token = await new SignJWT({ admin: true })
     .setProtectedHeader({ alg: "HS256" })

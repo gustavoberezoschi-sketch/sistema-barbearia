@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { limparVariavel } from "./env";
 
 const COOKIE = "sessao";
 const DURACAO_DIAS = 30;
@@ -8,7 +9,7 @@ const DURACAO_DIAS = 30;
 export type Sessao = { usuarioId: string; barbeariaId: string; nome: string };
 
 function chave() {
-  const segredo = process.env.AUTH_SECRET;
+  const segredo = limparVariavel(process.env.AUTH_SECRET);
   if (!segredo) throw new Error("Defina AUTH_SECRET no arquivo .env");
   return new TextEncoder().encode(segredo);
 }
