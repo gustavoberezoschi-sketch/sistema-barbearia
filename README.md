@@ -39,7 +39,8 @@ Leva uns 15 minutos. Você só precisa de uma conta no GitHub (que já tem).
 2. Clique em **New project**
    - **Name:** `sistema-barbearia`
    - **Database Password:** clique em *Generate a password* e **guarde essa senha**
-   - **Region:** *South America (São Paulo)*
+   - **Region:** *South America (São Paulo)* (se escolher outra, ajuste `regions` no `vercel.json`
+     para a região da Vercel mais próxima, ex.: `pdx1` para `us-west-2`)
 3. Com o projeto criado, clique em **Connect** (no topo) → aba **ORMs** → **Prisma**.
    Aparecem duas linhas: `DATABASE_URL` (porta 6543) e `DIRECT_URL` (porta 5432).
    Copie as duas e troque `[YOUR-PASSWORD]` pela senha do passo anterior.
