@@ -101,7 +101,7 @@ async function main() {
           ],
         },
         servicos: { create: SERVICOS },
-        produtos: { create: PRODUTOS },
+        produtos: { create: PRODUTOS.map(({ estoque: _e, estoqueMinimo: _m, ...p }) => p) },
         clientes: { create: CLIENTES.map(([nome, telefone, nascimento], i) => ({ nome, telefone, nascimento, senhaHash: i === 0 ? senhaHash : null })) },
       },
       include: { filiais: { orderBy: { ordem: "asc" } }, servicos: true, clientes: true, produtos: true },
@@ -114,6 +114,16 @@ async function main() {
       }
     }
     const barbeiros = await db.barbeiro.findMany({ where: { barbeariaId: b.id }, orderBy: { criadoEm: "asc" } });
+
+    // Estoque por unidade: a segunda unidade começa com metade
+    for (const produto of b.produtos) {
+      const ref = PRODUTOS.find((x) => x.nome === produto.nome)!;
+      for (const [i, f] of b.filiais.entries()) {
+        const quantidade = i === 0 ? ref.estoque : Math.floor(ref.estoque / 2);
+        await db.estoqueFilial.create({ data: { produtoId: produto.id, filialId: f.id, quantidade, minimo: ref.estoqueMinimo } });
+        if (quantidade) await db.movimentoEstoque.create({ data: { produtoId: produto.id, filialId: f.id, quantidade, tipo: "ENTRADA", observacao: "Estoque inicial" } });
+      }
+    }
     const [s] = [b.servicos];
     const porNome = (nome: string) => s.find((x) => x.nome === nome)!;
 

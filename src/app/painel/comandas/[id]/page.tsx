@@ -7,6 +7,7 @@ import { Cabecalho, Etiqueta, Secao } from "@/components/ui";
 import { exigirSessao } from "@/lib/auth";
 import { assinaturaVigente, subtotalDosItens } from "@/lib/comandas";
 import { db } from "@/lib/db";
+import { estoquePorProduto } from "@/lib/estoque";
 import { FORMAS_PAGAMENTO, NOME_FORMA, formatarDinheiro, linkWhatsApp } from "@/lib/formato";
 import { formatarDataHora } from "@/lib/tempo";
 import { estornarComanda, excluirItem, finalizarComanda, incluirProduto, incluirServico } from "../actions";
@@ -29,6 +30,7 @@ export default async function Comanda({ params }: { params: Promise<{ id: string
     db.barbeiro.findMany({ where: { barbeariaId: sessao.barbeariaId, filialId: comanda.filialId, ativo: true }, orderBy: { nome: "asc" } }),
     comanda.clienteId ? assinaturaVigente(comanda.clienteId) : null,
   ]);
+  const estoque = await estoquePorProduto(sessao.barbeariaId, comanda.filialId);
   const subtotal = subtotalDosItens(comanda.itens);
   const bruto = comanda.itens.reduce((s, i) => s + i.quantidade * i.precoUnitCentavos, 0);
   const saldo = comanda.cliente?.saldoCashbackCentavos ?? 0;
@@ -134,7 +136,7 @@ export default async function Comanda({ params }: { params: Promise<{ id: string
                       <select name="produtoId" className="input" required aria-label="Produto">
                         {produtos.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.nome} · {formatarDinheiro(p.precoCentavos)} ({p.estoque} em estoque)
+                            {p.nome} · {formatarDinheiro(p.precoCentavos)} ({estoque(p.id).quantidade} em estoque)
                           </option>
                         ))}
                       </select>

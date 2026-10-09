@@ -62,6 +62,8 @@ model Filial {
   comandas     Comanda[]
   caixas       Caixa[]
   bloqueios    Bloqueio[]
+  estoques     EstoqueFilial[]
+  movimentos   MovimentoEstoque[]
 
   @@index([barbeariaId])
 }
@@ -212,21 +214,35 @@ model Produto {
   categoria     String    @default("Geral")
   precoCentavos Int
   custoCentavos Int       @default(0)
-  estoque       Int       @default(0)
-  estoqueMinimo Int       @default(0)
   ativo         Boolean   @default(true)
   criadoEm      DateTime  @default(now())
 
+  estoques   EstoqueFilial[]
   movimentos MovimentoEstoque[]
   itens      ComandaItem[]
+}
+
+// Quantidade de cada produto em cada unidade.
+model EstoqueFilial {
+  id         String  @id @default(cuid())
+  produtoId  String
+  produto    Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  filialId   String
+  filial     Filial  @relation(fields: [filialId], references: [id], onDelete: Cascade)
+  quantidade Int     @default(0)
+  minimo     Int     @default(0) // avisa quando chegar nesse número
+
+  @@unique([produtoId, filialId])
 }
 
 model MovimentoEstoque {
   id         String   @id @default(cuid())
   produtoId  String
   produto    Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  filialId   String
+  filial     Filial   @relation(fields: [filialId], references: [id], onDelete: Cascade)
   quantidade Int // positivo = entrada, negativo = saída
-  tipo       String // ENTRADA | VENDA | AJUSTE | ESTORNO
+  tipo       String // ENTRADA | VENDA | AJUSTE | ESTORNO | TRANSFERENCIA
   observacao String?
   criadoEm   DateTime @default(now())
 }

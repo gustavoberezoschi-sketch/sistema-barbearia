@@ -17,6 +17,7 @@ import { GraficoBarras } from "@/components/GraficoBarras";
 import { Avatar, Cabecalho, Etiqueta, Indicador, Secao, Vazio } from "@/components/ui";
 import { exigirSessao } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { estoquePorProduto } from "@/lib/estoque";
 import { filialDoPainel, naFilial } from "@/lib/filial";
 import { formatarDinheiro, linkWhatsApp } from "@/lib/formato";
 import { criarDataHora, diaLocal, formatarDia, horaLocal, inicioEFimDoDia, limitesDoMes, somarDias, somarMeses } from "@/lib/tempo";
@@ -52,7 +53,7 @@ export default async function Inicio() {
       }),
       db.comanda.count({ where: { barbeariaId, ...filtro, status: "ABERTA" } }),
       db.caixa.findMany({ where: { barbeariaId, ...filtro, fechadoEm: null }, include: { filial: true } }),
-      db.produto.findMany({ where: { barbeariaId, ativo: true }, select: { nome: true, estoque: true, estoqueMinimo: true } }),
+      db.produto.findMany({ where: { barbeariaId, ativo: true }, select: { id: true, nome: true } }),
       db.contaPagar.findMany({ where: { barbeariaId, pagoEm: null, vencimento: { lte: somarDias(hoje, 7) } }, orderBy: { vencimento: "asc" } }),
       db.assinatura.count({ where: { barbeariaId, status: "ATIVA", pagoAte: { lt: hoje } } }),
       db.cliente.findMany({ where: { barbeariaId, nascimento: { not: null } }, select: { id: true, nome: true, telefone: true, nascimento: true } }),
@@ -76,7 +77,8 @@ export default async function Inicio() {
 
   const agora = new Date();
   const proximos = agendamentosHoje.filter((a) => a.fim > agora && (a.status === "AGENDADO" || a.status === "CONFIRMADO"));
-  const estoqueBaixo = produtos.filter((p) => p.estoque <= p.estoqueMinimo);
+  const estoque = await estoquePorProduto(barbeariaId, ctx.atual?.id ?? null);
+  const estoqueBaixo = produtos.filter((p) => estoque(p.id).baixo);
   const semana = Array.from({ length: 7 }, (_, i) => somarDias(hoje, i).slice(5));
   const aniversariantes = clientes.filter((c) => c.nascimento && semana.includes(c.nascimento.slice(5)));
   const hora = Number(horaLocal(agora).slice(0, 2));

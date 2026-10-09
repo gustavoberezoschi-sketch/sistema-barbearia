@@ -5,6 +5,7 @@ import { FormAcao } from "@/components/FormAcao";
 import { Cabecalho, Etiqueta, Indicador, Secao, Vazio } from "@/components/ui";
 import { exigirGestor } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { filialDoPainel } from "@/lib/filial";
 import { formatarDinheiro } from "@/lib/formato";
 import { salvarProduto } from "./actions";
 
@@ -12,19 +13,37 @@ export const metadata: Metadata = { title: "Produtos e estoque" };
 export const dynamic = "force-dynamic";
 
 export default async function Produtos() {
-  const { barbeariaId } = await exigirGestor();
-  const produtos = await db.produto.findMany({ where: { barbeariaId }, orderBy: [{ ativo: "desc" }, { categoria: "asc" }, { nome: "asc" }] });
+  const sessao = await exigirGestor();
+  const { barbeariaId } = sessao;
+  const ctx = await filialDoPainel(sessao);
+  const ativas = ctx.filiais.filter((f) => f.ativo);
+  const colunas = ctx.atual ? ativas.filter((f) => f.id === ctx.atual!.id) : ativas;
+  const varias = ativas.length > 1;
+
+  const produtos = await db.produto.findMany({
+    where: { barbeariaId },
+    include: { estoques: true },
+    orderBy: [{ ativo: "desc" }, { categoria: "asc" }, { nome: "asc" }],
+  });
+  const em = (p: (typeof produtos)[number], filialId: string) => p.estoques.find((e) => e.filialId === filialId) ?? { quantidade: 0, minimo: 0 };
   const ativos = produtos.filter((p) => p.ativo);
-  const baixo = ativos.filter((p) => p.estoque <= p.estoqueMinimo);
-  const valorEstoque = ativos.reduce((s, p) => s + Math.max(0, p.estoque) * p.custoCentavos, 0);
+  const baixo = ativos.filter((p) => colunas.some((f) => em(p, f.id).quantidade <= em(p, f.id).minimo));
+  const valorEstoque = ativos.reduce((s, p) => s + colunas.reduce((t, f) => t + Math.max(0, em(p, f.id).quantidade), 0) * p.custoCentavos, 0);
   const categorias = [...new Set(produtos.map((p) => p.categoria))];
 
   return (
     <div>
-      <Cabecalho titulo="Produtos e estoque" descricao="Pomadas, óleos, bebidas: o que a barbearia vende e quanto tem guardado." />
+      <Cabecalho
+        titulo="Produtos e estoque"
+        descricao={
+          varias
+            ? `O cadastro vale para todas as unidades; o estoque é de cada uma. Mostrando: ${ctx.atual ? ctx.atual.nome : "todas as unidades"}.`
+            : "Pomadas, óleos, bebidas: o que a barbearia vende e quanto tem guardado."
+        }
+      />
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <Indicador rotulo="Produtos ativos" valor={ativos.length} />
-        <Indicador rotulo="Estoque baixo" valor={baixo.length} destaque={baixo.length > 0} detalhe="No mínimo ou abaixo dele" />
+        <Indicador rotulo="Estoque baixo" valor={baixo.length} destaque={baixo.length > 0} detalhe={varias && !ctx.atual ? "Em alguma unidade" : "No mínimo ou abaixo dele"} />
         <Indicador rotulo="Valor em estoque (custo)" valor={formatarDinheiro(valorEstoque)} />
       </div>
 
@@ -37,7 +56,11 @@ export default async function Produtos() {
               <table className="w-full text-sm">
                 <thead className="text-left text-couro-400">
                   <tr className="[&>th]:px-5 [&>th]:pb-2 [&>th]:font-medium">
-                    <th>Produto</th><th>Preço</th><th>Margem</th><th>Estoque</th><th />
+                    <th>Produto</th>
+                    <th>Preço</th>
+                    <th>Margem</th>
+                    {colunas.map((f) => <th key={f.id}>{varias ? f.nome : "Estoque"}</th>)}
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
@@ -51,10 +74,15 @@ export default async function Produtos() {
                         </td>
                         <td className="tabular-nums">{formatarDinheiro(p.precoCentavos)}</td>
                         <td className="tabular-nums">{p.custoCentavos ? `${margem}%` : "—"}</td>
-                        <td>
-                          <span className="font-semibold tabular-nums">{p.estoque}</span>{" "}
-                          {p.ativo && p.estoque <= p.estoqueMinimo && <Etiqueta tom="vermelho">Repor</Etiqueta>}
-                        </td>
+                        {colunas.map((f) => {
+                          const e = em(p, f.id);
+                          return (
+                            <td key={f.id} className="whitespace-nowrap">
+                              <span className="font-semibold tabular-nums">{e.quantidade}</span>{" "}
+                              {p.ativo && e.quantidade <= e.minimo && <Etiqueta tom="vermelho">Repor</Etiqueta>}
+                            </td>
+                          );
+                        })}
                         <td className="text-right">
                           <Link href={`/painel/produtos/${p.id}`} className="btn-secundario btn-pequeno">Gerenciar</Link>
                         </td>
@@ -87,8 +115,20 @@ export default async function Produtos() {
                 <label className="label" htmlFor="custo">Custo</label>
                 <input id="custo" name="custo" className="input" placeholder="20,00" inputMode="decimal" />
               </div>
+            </div>
+            {varias ? (
               <div>
-                <label className="label" htmlFor="estoqueInicial">Estoque atual</label>
+                <label className="label" htmlFor="filialId">Estoque inicial em</label>
+                <select id="filialId" name="filialId" className="input" defaultValue={ctx.atual?.id ?? ativas[0]?.id}>
+                  {ativas.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                </select>
+              </div>
+            ) : (
+              <input type="hidden" name="filialId" value={ativas[0]?.id ?? ""} />
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label" htmlFor="estoqueInicial">Quantidade</label>
                 <input id="estoqueInicial" name="estoqueInicial" type="number" min={0} defaultValue={0} className="input" />
               </div>
               <div>

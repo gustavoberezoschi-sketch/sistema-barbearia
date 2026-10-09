@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "./db";
+import { movimentarEstoque } from "./estoque";
 import { diaLocal, limitesDoMes, criarDataHora, somarDias } from "./tempo";
 
 type Tx = Prisma.TransactionClient;
@@ -196,9 +197,12 @@ export async function fecharComanda(
 
     for (const item of itens) {
       if (item.tipo !== "PRODUTO" || !item.produtoId) continue;
-      await tx.produto.update({ where: { id: item.produtoId }, data: { estoque: { decrement: item.quantidade } } });
-      await tx.movimentoEstoque.create({
-        data: { produtoId: item.produtoId, quantidade: -item.quantidade, tipo: "VENDA", observacao: `Comanda #${comanda.numero}` },
+      await movimentarEstoque(tx, {
+        produtoId: item.produtoId,
+        filialId: comanda.filialId,
+        quantidade: -item.quantidade,
+        tipo: "VENDA",
+        observacao: `Comanda #${comanda.numero}`,
       });
     }
     if (cliente && (cashbackUsado || cashbackGerado)) {
@@ -239,9 +243,12 @@ export async function cancelarComanda(barbeariaId: string, comandaId: string) {
     if (comanda.status === "FECHADA") {
       for (const item of comanda.itens) {
         if (item.tipo !== "PRODUTO" || !item.produtoId) continue;
-        await tx.produto.update({ where: { id: item.produtoId }, data: { estoque: { increment: item.quantidade } } });
-        await tx.movimentoEstoque.create({
-          data: { produtoId: item.produtoId, quantidade: item.quantidade, tipo: "ESTORNO", observacao: `Comanda #${comanda.numero} cancelada` },
+        await movimentarEstoque(tx, {
+          produtoId: item.produtoId,
+          filialId: comanda.filialId,
+          quantidade: item.quantidade,
+          tipo: "ESTORNO",
+          observacao: `Comanda #${comanda.numero} cancelada`,
         });
       }
       if (comanda.clienteId && (comanda.cashbackUsadoCentavos || comanda.cashbackGeradoCentavos)) {

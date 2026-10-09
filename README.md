@@ -25,7 +25,7 @@ o próprio login, os próprios dados e o próprio link de agendamento.
 
 **Cadastros**
 - **Serviços:** categoria, descrição, foto, duração, comissão específica, quais barbeiros fazem e se aparece online
-- **Produtos e estoque:** custo, margem, estoque mínimo, entradas, contagem e histórico
+- **Produtos e estoque:** cadastro único para a rede e estoque separado por unidade (quantidade, mínimo, entradas, contagem, transferência entre unidades e histórico)
 - **Equipe:** foto, comissão de serviços e de produtos, e login próprio do barbeiro (vê só a agenda, as comandas e as comissões dele)
 
 **Gestão**

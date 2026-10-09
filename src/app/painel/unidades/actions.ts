@@ -47,7 +47,13 @@ export async function salvarFilial(_: Resultado, form: FormData): Promise<Result
     ]);
   } else {
     const total = await db.filial.count({ where: { barbeariaId } });
-    await db.filial.create({ data: { ...dados, barbeariaId, ordem: total, horarios: { create: horarios } } });
+    const nova = await db.filial.create({ data: { ...dados, barbeariaId, ordem: total, horarios: { create: horarios } } });
+    // Produtos entram na unidade nova zerados, com o mesmo estoque mínimo da unidade principal.
+    const produtos = await db.produto.findMany({ where: { barbeariaId }, include: { estoques: { orderBy: { minimo: "desc" }, take: 1 } } });
+    await db.estoqueFilial.createMany({
+      data: produtos.map((p) => ({ produtoId: p.id, filialId: nova.id, minimo: p.estoques[0]?.minimo ?? 0 })),
+      skipDuplicates: true,
+    });
   }
   revalidatePath("/painel", "layout");
   revalidatePath("/b", "layout");
