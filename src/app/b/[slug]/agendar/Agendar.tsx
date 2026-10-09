@@ -281,6 +281,10 @@ export function Agendar({
               <input id="senha-cliente" type="password" className="input" value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="new-password" placeholder="Para acompanhar seus agendamentos" />
             </div>
             <p className="text-sm text-couro-400">Já tem conta? <Link href={`/b/${slug}/entrar`} className="font-semibold text-tinta underline">Entrar</Link></p>
+            <p className="text-xs text-couro-400">
+              Seus dados são usados pela barbearia só para o seu atendimento. Veja a{" "}
+              <Link href="/privacidade" target="_blank" className="underline">Política de Privacidade</Link>.
+            </p>
           </div>
         </Etapa>
       )}

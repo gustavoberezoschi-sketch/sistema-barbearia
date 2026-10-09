@@ -223,6 +223,10 @@ export default async function PaginaPublica({ params }: Props) {
 
       <p className="mt-12 text-center text-xs text-couro-400">
         Agendamento online por <span className="font-semibold">Klareza<span className="text-latao-600">Barber</span></span>
+        {" · "}
+        <Link href="/privacidade" className="hover:text-tinta">Privacidade</Link>
+        {" · "}
+        <Link href="/termos" className="hover:text-tinta">Termos</Link>
       </p>
 
       <div className={`fixed inset-x-0 bottom-0 z-20 border-t border-black/[0.06] bg-white/95 p-3 backdrop-blur ${b.suspensa ? "hidden" : ""}`}>

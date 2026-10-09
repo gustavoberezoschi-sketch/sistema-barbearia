@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { FormAcao } from "@/components/FormAcao";
 import { criarConta, entrar } from "../conta/actions";
@@ -30,6 +31,10 @@ export function Acesso({ slug, abaInicial }: { slug: string; abaInicial: "entrar
           <div><label className="label" htmlFor="senha-conta">Crie uma senha</label><input id="senha-conta" name="senha" type="password" className="input" autoComplete="new-password" minLength={6} required /></div>
           <button className={botao}>Criar conta</button>
           <p className="text-center text-xs text-couro-400">Se você já foi atendido aqui, seu histórico aparece automaticamente.</p>
+          <p className="text-center text-xs text-couro-400">
+            Ao criar a conta, você concorda com os <Link href="/termos" target="_blank" className="underline">Termos de Uso</Link> e a{" "}
+            <Link href="/privacidade" target="_blank" className="underline">Política de Privacidade</Link>.
+          </p>
         </FormAcao>
       )}
     </div>

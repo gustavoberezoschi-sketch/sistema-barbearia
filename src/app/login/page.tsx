@@ -43,6 +43,9 @@ export default function Login() {
               {enviando ? "Entrando..." : "Entrar"}
             </button>
           </div>
+          <p className="mt-8 text-center text-xs text-couro-400">
+            <a href="/termos" className="hover:text-tinta">Termos de Uso</a> · <a href="/privacidade" className="hover:text-tinta">Política de Privacidade</a>
+          </p>
         </form>
       </div>
     </main>
