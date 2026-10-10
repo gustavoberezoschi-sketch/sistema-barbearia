@@ -143,8 +143,9 @@ function Abertura({ para, falando }: { para: string | null; falando: boolean }) 
   );
 }
 
-/** Cada problema é riscado quando o Klaro fala dele (segundos desde o início da cena). */
-const RISCOS = [5.2, 9.2, 11.2, 13.2];
+/** Cada problema é riscado quando o Klaro fala dele: posição da palavra na fala da cena 2, em segundos. */
+const momentoDaPalavra = (palavra: number) => (700 + (palavra / FALAS[1].legenda.split(" ").length) * FALA_MS[1]) / 1000;
+const RISCOS = [9, 17, 21, 25].map(momentoDaPalavra);
 
 function Problema() {
   const dores = ["Agenda no caderno e no WhatsApp", "Cliente que marca e não aparece", "Mensalidade que ninguém lembra de cobrar", "Caixa que não bate no fim do dia"];
@@ -158,7 +159,7 @@ function Problema() {
           </A>
         ))}
       </ul>
-      <A d={13.8} className="mt-10">
+      <A d={momentoDaPalavra(26)} className="mt-10">
         <p className="font-display text-2xl font-bold text-verde-claro sm:text-4xl">Dá para resolver tudo isso num lugar só.</p>
       </A>
     </div>
@@ -660,7 +661,7 @@ function Final({ whatsapp, para, recomecar, video, falando }: { whatsapp: string
       )}
       <A d={1.3} c="ap-largura" className="ap-poste mt-12 h-2 w-40 rounded-full" />
       <A d={1.5} className="mt-6 text-xs text-couro-400">
-        KlarezaBarber é uma marca da Rotta Digital · Klaro é um personagem fictício
+        KlarezaBarber é uma marca da Rotta Digital · Klaro é um personagem fictício · voz: ElevenLabs
       </A>
     </div>
   );
@@ -669,8 +670,8 @@ function Final({ whatsapp, para, recomecar, video, falando }: { whatsapp: string
 // ---------- apresentação ----------
 
 const BASE = [5500, 7500, 9000, 8500, 8000, 8500, 8000, 7500, 8000, 7500, 9000, 0];
-/** Narração em áudio. Desligada até termos uma voz aprovada; as legendas continuam. */
-const NARRACAO = false;
+/** Narração em áudio (voz do ElevenLabs); as legendas aparecem sempre. */
+const NARRACAO = true;
 /** Quando o Klaro começa a falar em cada cena (ms). */
 export const INICIO_FALA = 700;
 /** Cada cena dura o necessário para a animação e para a fala do Klaro terminar. */
