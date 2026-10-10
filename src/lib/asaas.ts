@@ -119,13 +119,16 @@ export async function criarAssinatura(
     description: string;
     externalReference: string;
     split?: { walletId: string; percentualValue: number }[];
+    // CREDIT_CARD: o cliente informa o cartão na 1ª cobrança e as próximas são debitadas sozinhas.
+    // UNDEFINED: cada cobrança gera um link e o pagador escolhe Pix, cartão ou boleto.
+    billingType?: "CREDIT_CARD" | "UNDEFINED";
   },
   apiKeyCifrada?: string,
 ) {
   return chamar<{ id: string }>("/subscriptions", {
     chave: apiKeyCifrada ? daSubconta(apiKeyCifrada) : undefined,
     metodo: "POST",
-    corpo: { ...dados, billingType: "UNDEFINED" }, // o cliente escolhe Pix, cartão ou boleto
+    corpo: { billingType: "UNDEFINED", ...dados },
   });
 }
 
@@ -144,10 +147,15 @@ export async function cancelarAssinaturaAsaas(assinaturaId: string, apiKeyCifrad
 
 export type Cobranca = { id: string; value: number; dueDate: string; status: string; billingType?: string; description?: string; subscription?: string | null };
 
+/** Cobranças em aberto de uma assinatura, da que vence primeiro para a última. */
+export async function cobrancasPendentes(assinaturaId: string, apiKeyCifrada: string) {
+  const r = await chamar<{ data?: Cobranca[] }>(`/subscriptions/${assinaturaId}/payments?status=PENDING`, { chave: daSubconta(apiKeyCifrada) });
+  return (r.data ?? []).filter((c) => c.status === "PENDING").sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+}
+
 /** Próxima cobrança em aberto de uma assinatura (a que vence primeiro). */
 export async function proximaCobrancaPendente(assinaturaId: string, apiKeyCifrada: string) {
-  const r = await chamar<{ data?: Cobranca[] }>(`/subscriptions/${assinaturaId}/payments?status=PENDING`, { chave: daSubconta(apiKeyCifrada) });
-  return (r.data ?? []).filter((c) => c.status === "PENDING").sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0] ?? null;
+  return (await cobrancasPendentes(assinaturaId, apiKeyCifrada))[0] ?? null;
 }
 
 export async function buscarCobranca(id: string, apiKeyCifrada: string) {

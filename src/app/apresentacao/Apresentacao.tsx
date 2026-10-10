@@ -378,8 +378,8 @@ function Clube() {
     <Cena
       rotulo="Clube de assinatura"
       titulo={<>Dinheiro entrando <span className="text-verde-claro">todo mês</span>, mesmo com a agenda vazia.</>}
-      texto="Monte planos como “corte ilimitado” ou “corte + barba”. O cliente paga online e o plano renova sozinho."
-      itens={["Cobrança automática por Pix, cartão ou boleto", "O dinheiro cai direto na conta da barbearia", "Controle de quantos cortes o cliente já usou"]}
+      texto="Monte planos como “corte ilimitado” ou “corte + barba”. O cliente cadastra o cartão uma vez e a mensalidade é cobrada sozinha todo mês."
+      itens={["Cobrança automática no cartão, todo mês", "O dinheiro cai direto na conta da barbearia", "O cliente cancela quando quiser pelo app"]}
       visual={
         <div className="w-full max-w-[460px] rounded-3xl border border-white/10 bg-couro-900 p-5 text-white shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] sm:p-6">
           <div className="flex items-center gap-2 text-sm text-couro-300"><Crown className="size-4 text-verde-claro" /> Clube Corte Ilimitado · R$ 89/mês</div>
@@ -402,7 +402,7 @@ function Clube() {
             ))}
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {["Pix", "Cartão", "Boleto", "Renova sozinho"].map((t, i) => (
+            {["Cartão de crédito", "Débito automático", "Renova sozinho"].map((t, i) => (
               <A key={t} d={2.4 + i * 0.2} c="ap-pop" className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold">{t}</A>
             ))}
           </div>

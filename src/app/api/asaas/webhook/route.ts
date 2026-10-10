@@ -21,6 +21,8 @@ type Pagamento = {
 
 const PAGO = new Set(["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"]);
 const NOVA_COBRANCA = new Set(["PAYMENT_CREATED", "PAYMENT_OVERDUE"]);
+// cobrança no cartão que não passou: o cliente precisa atualizar o cartão pelo link
+const COBRANCA_COM_PROBLEMA = new Set(["PAYMENT_OVERDUE", "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED"]);
 
 const maior = (a: string | null, b: string) => (a && a > b ? a : b);
 
@@ -46,7 +48,10 @@ export async function POST(req: Request) {
   // 1) Mensalidade do clube de uma barbearia (subconta)
   const assinatura = await db.assinatura.findUnique({ where: { asaasId: payment.subscription } });
   if (assinatura) {
-    if (NOVA_COBRANCA.has(event) && payment.invoiceUrl) {
+    // Clube no cartão: as mensalidades são debitadas sozinhas. O link só serve para cadastrar o cartão
+    // (assinatura aguardando o 1º pagamento) ou para trocar um cartão recusado.
+    const precisaDoCliente = assinatura.status === "AGUARDANDO" || COBRANCA_COM_PROBLEMA.has(event);
+    if ((NOVA_COBRANCA.has(event) || COBRANCA_COM_PROBLEMA.has(event)) && payment.invoiceUrl && precisaDoCliente) {
       await db.assinatura.update({ where: { id: assinatura.id }, data: { linkPagamento: payment.invoiceUrl } });
     }
     if (PAGO.has(event) && !(await db.pagamentoAssinatura.findUnique({ where: { asaasPagamentoId: payment.id } }))) {

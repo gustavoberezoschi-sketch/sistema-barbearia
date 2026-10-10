@@ -190,7 +190,7 @@ export async function fecharComanda(
 
     const naFatura = opcoes.formaPagamento === "FATURA";
     const assinaturaFatura = naFatura && cliente
-      ? await tx.assinatura.findFirst({ where: { clienteId: cliente.id, barbeariaId, status: "ATIVA", asaasId: { not: null }, pagoAte: { gte: diaLocal() } } })
+      ? await tx.assinatura.findFirst({ where: { clienteId: cliente.id, barbeariaId, status: "ATIVA", asaasId: { not: null }, canceladaEm: null, pagoAte: { gte: diaLocal() } } })
       : null;
     if (naFatura && (!assinaturaFatura || !barbearia.cobrancaOnlineClube || !barbearia.asaasApiKey))
       throw new ErroComanda("Só dá para lançar na fatura de assinantes com cobrança automática do clube.");

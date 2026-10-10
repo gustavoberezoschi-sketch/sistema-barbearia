@@ -46,7 +46,7 @@ export default async function Comanda({ params }: { params: Promise<{ id: string
     "Obrigado pela preferência! ✂️",
   ].filter(Boolean).join("\n");
 
-  const podeFatura = !!assinatura?.asaasId && comanda.barbearia.cobrancaOnlineClube && !!comanda.barbearia.asaasApiKey;
+  const podeFatura = !!assinatura?.asaasId && !assinatura.canceladaEm && comanda.barbearia.cobrancaOnlineClube && !!comanda.barbearia.asaasApiKey;
 
   return (
     <div className="mx-auto max-w-5xl">

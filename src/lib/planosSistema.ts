@@ -40,7 +40,13 @@ export function situacaoDaBarbearia(b: { pagoAte: string | null; suspensa: boole
 }
 
 /** Quanto do plano a barbearia está usando. */
+/** Assinaturas que o cliente cancelou e cujo período pago já acabou passam a "CANCELADA". */
+export async function encerrarCanceladasVencidas(barbeariaId: string) {
+  await db.assinatura.updateMany({ where: { barbeariaId, status: "ATIVA", canceladaEm: { not: null }, pagoAte: { lt: diaLocal() } }, data: { status: "CANCELADA" } });
+}
+
 export async function usoDoPlano(barbeariaId: string) {
+  await encerrarCanceladasVencidas(barbeariaId);
   const [b, unidades, assinantes] = await Promise.all([
     db.barbearia.findUniqueOrThrow({ where: { id: barbeariaId }, select: { plano: true, ciclo: true, pagoAte: true, suspensa: true } }),
     db.filial.count({ where: { barbeariaId, ativo: true } }),

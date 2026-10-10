@@ -88,6 +88,14 @@ export default async function Termos() {
           <li>Informe dados verdadeiros e mantenha sua senha em segredo.</li>
           <li>Se não puder comparecer, cancele pelo link do agendamento dentro do prazo da barbearia ou fale com ela.</li>
           <li>Planos do clube de assinatura são contratados com a barbearia, que é quem presta o serviço.</li>
+          <li>
+            Na assinatura online, o cliente cadastra o cartão de crédito uma vez e autoriza a cobrança automática da mensalidade todo mês, até cancelar.
+            Serviços e produtos extras lançados na fatura do clube entram na mesma cobrança.
+          </li>
+          <li>
+            O cancelamento pode ser feito a qualquer momento na área do cliente, em “Plano”. As cobranças param na hora e o plano continua valendo
+            até o fim do período já pago.
+          </li>
         </ul>
       </section>
 

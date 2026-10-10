@@ -9,7 +9,7 @@ const PASSOS: Passo[] = [
   { titulo: "O cliente agenda sozinho.", texto: "Pelo link na bio do Instagram ou no WhatsApp, ele escolhe a unidade, o barbeiro, os serviços e o horário. Sem baixar aplicativo e sem você parar o corte para responder.", img: "/landing/cel-agendar.webp", alt: "Tela de agendamento no celular do cliente", celular: true },
   { titulo: "A agenda se organiza.", texto: "Cada barbeiro com a sua coluna, almoço e folgas bloqueados, nenhum horário marcado duas vezes. O que entra pelo site aparece na hora.", img: "/landing/agenda.webp", alt: "Agenda da equipe no painel" },
   { titulo: "Lembrete com um toque.", texto: "A lista de quem vem amanhã já está pronta. Um toque e o WhatsApp abre com a mensagem e o link para o cliente confirmar.", img: "/landing/lembretes.webp", alt: "Tela de lembretes por WhatsApp" },
-  { titulo: "O clube cobra todo mês.", texto: "Planos de assinatura com cobrança automática por Pix, cartão ou boleto. O cliente acompanha o plano dele pelo celular.", img: "/landing/cel-plano.webp", alt: "Plano do cliente no celular", celular: true },
+  { titulo: "O clube cobra todo mês.", texto: "O cliente cadastra o cartão uma vez e a mensalidade é debitada sozinha todo mês. Ele acompanha o plano pelo celular e cancela quando quiser.", img: "/landing/cel-plano.webp", alt: "Plano do cliente no celular", celular: true },
   { titulo: "E você enxerga o resultado.", texto: "Faturamento, ticket médio, comissões, faltas e desempenho por unidade e por barbeiro, sem planilha.", img: "/landing/relatorios.webp", alt: "Relatórios do painel" },
 ];
 

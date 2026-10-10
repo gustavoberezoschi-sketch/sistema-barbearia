@@ -8,6 +8,7 @@ import { cobraOnline } from "@/lib/clubeOnline";
 import { usosDoPlanoNoMes } from "@/lib/comandas";
 import { db } from "@/lib/db";
 import { FORMAS_PAGAMENTO, formatarDinheiro, formatarTelefone, linkWhatsApp } from "@/lib/formato";
+import { encerrarCanceladasVencidas } from "@/lib/planosSistema";
 import { diaLocal, formatarDia } from "@/lib/tempo";
 import { alternarPlano, cancelarAssinatura, novaAssinatura, pagarMensalidade, salvarPlano } from "./actions";
 
@@ -18,6 +19,7 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
   const { barbeariaId } = await exigirGestor();
   const p = await searchParams;
   const hoje = diaLocal();
+  await encerrarCanceladasVencidas(barbeariaId);
   const [planos, assinaturas, clientes, servicos, barbearia] = await Promise.all([
     db.plano.findMany({ where: { barbeariaId }, include: { servicos: true, _count: { select: { assinaturas: { where: { status: "ATIVA" } } } } }, orderBy: [{ ativo: "desc" }, { precoCentavos: "asc" }] }),
     db.assinatura.findMany({ where: { barbeariaId, status: { in: ["ATIVA", "AGUARDANDO"] } }, include: { cliente: true, plano: true, extras: { where: { status: "PENDENTE" }, select: { valorCentavos: true } } }, orderBy: [{ status: "asc" }, { pagoAte: "asc" }] }),
@@ -29,7 +31,7 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
   const editar = planos.find((x) => x.id === p.editar);
   const online = cobraOnline(barbearia);
   const ativas = assinaturas.filter((a) => a.status === "ATIVA");
-  const recorrente = ativas.reduce((s, a) => s + a.plano.precoCentavos, 0);
+  const recorrente = ativas.filter((a) => !a.canceladaEm).reduce((s, a) => s + a.plano.precoCentavos, 0);
   const atrasadas = ativas.filter((a) => a.pagoAte < hoje);
   const ativos = planos.filter((x) => x.ativo);
 
@@ -52,9 +54,12 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
                 {assinaturas.map((a) => {
                   const aguardando = a.status === "AGUARDANDO";
                   const atrasada = !aguardando && a.pagoAte < hoje;
+                  const cancelada = !!a.canceladaEm;
                   const usado = usos.get(a.id) ?? 0;
                   const mensagemLink = a.linkPagamento
-                    ? `Oi, ${a.cliente.nome.split(" ")[0]}! Segue o link para pagar ${aguardando ? "a assinatura" : "a mensalidade"} do ${a.plano.nome} na ${barbearia.nome} (${formatarDinheiro(a.plano.precoCentavos)}). Dá para pagar por Pix, cartão ou boleto: ${a.linkPagamento}`
+                    ? aguardando
+                      ? `Oi, ${a.cliente.nome.split(" ")[0]}! Segue o link para cadastrar seu cartão e ativar o ${a.plano.nome} na ${barbearia.nome} (${formatarDinheiro(a.plano.precoCentavos)}/mês). Depois disso a mensalidade é debitada sozinha todo mês: ${a.linkPagamento}`
+                      : `Oi, ${a.cliente.nome.split(" ")[0]}! A mensalidade do ${a.plano.nome} na ${barbearia.nome} não foi aprovada no seu cartão. Atualize o cartão por aqui: ${a.linkPagamento}`
                     : null;
                   return (
                     <li key={a.id} className="flex flex-wrap items-center gap-3 py-3">
@@ -65,7 +70,8 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
                           {a.plano.usosPorMes ? ` de ${a.plano.usosPorMes}` : ""} este mês
                         </p>
                       </div>
-                      {a.asaasId && <Etiqueta tom="azul">Cobrança automática</Etiqueta>}
+                      {a.asaasId && !cancelada && <Etiqueta tom="azul">Cartão · automático</Etiqueta>}
+                      {cancelada && <Etiqueta tom="neutro">Cancelou pelo app · vale até {formatarDia(a.pagoAte)}</Etiqueta>}
                       {a.extras.length > 0 && (
                         <Etiqueta tom="latao">+ {formatarDinheiro(a.extras.reduce((t, e) => t + e.valorCentavos, 0))} em extras na fatura</Etiqueta>
                       )}
@@ -151,7 +157,7 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
                   {ativos.map((pl) => <option key={pl.id} value={pl.id}>{pl.nome} · {formatarDinheiro(pl.precoCentavos)}/mês</option>)}
                 </select>
                 <select name="formaPagamento" className="input" defaultValue={online ? "ONLINE" : "PIX"} aria-label="Forma de pagamento da 1ª mensalidade">
-                  {online && <option value="ONLINE">Cobrar online todo mês (Pix, cartão ou boleto)</option>}
+                  {online && <option value="ONLINE">Cobrar no cartão do cliente todo mês (automático)</option>}
                   {Object.entries(FORMAS_PAGAMENTO).map(([v, r]) => <option key={v} value={v}>1ª mensalidade em {r} (no balcão)</option>)}
                 </select>
                 {online && <input name="cpf" className="input" placeholder="CPF do cliente (para cobrança online)" inputMode="numeric" aria-label="CPF do cliente" />}

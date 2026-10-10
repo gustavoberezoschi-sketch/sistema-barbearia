@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { formatarDinheiro, linkWhatsApp } from "@/lib/formato";
 import { planoDoCliente } from "@/lib/publico";
 import { diaLocal, formatarDia } from "@/lib/tempo";
-import { assinarPeloCliente } from "../actions";
+import { assinarPeloCliente, cancelarPeloCliente } from "../actions";
 
 export const metadata: Metadata = { title: "Meu plano" };
 
@@ -36,9 +36,11 @@ export default async function Plano({ params }: { params: Promise<{ slug: string
       <h1 className="font-display text-2xl font-bold">Plano</h1>
       {minha?.status === "AGUARDANDO" && (
         <div className="rounded-2xl border-2 border-[var(--cor)] bg-white p-5">
-          <p className="font-display text-lg font-bold">{minha.plano.nome}: falta o pagamento</p>
-          <p className="mt-1 text-sm text-couro-700">Assim que o pagamento for confirmado, o plano é liberado automaticamente.</p>
-          {minha.linkPagamento && <a href={minha.linkPagamento} className={botao}>Pagar agora (Pix, cartão ou boleto)</a>}
+          <p className="font-display text-lg font-bold">{minha.plano.nome}: falta cadastrar o cartão</p>
+          <p className="mt-1 text-sm text-couro-700">
+            Informe o cartão uma vez só. A primeira mensalidade é cobrada agora e as próximas são debitadas automaticamente todo mês.
+          </p>
+          {minha.linkPagamento && <a href={minha.linkPagamento} className={botao}>Cadastrar cartão e assinar</a>}
         </div>
       )}
       {plano ? (
@@ -55,7 +57,7 @@ export default async function Plano({ params }: { params: Promise<{ slug: string
           </dl>
           {minha && minha.extras.length > 0 && (
             <div className="mt-4 rounded-xl border border-black/[0.06] p-3 text-sm">
-              <p className="font-semibold">Extras na próxima fatura</p>
+              <p className="font-semibold">{minha.canceladaEm ? "Extras a pagar (cobrança à parte)" : "Extras na próxima fatura"}</p>
               <ul className="mt-2 space-y-1">
                 {minha.extras.map((e) => (
                   <li key={e.id} className="flex justify-between gap-3">
@@ -65,9 +67,10 @@ export default async function Plano({ params }: { params: Promise<{ slug: string
                 ))}
               </ul>
               <p className="mt-2 flex justify-between border-t border-black/[0.06] pt-2 font-semibold">
-                <span>Próxima fatura</span>
-                <span className="tabular-nums">{formatarDinheiro(minha.plano.precoCentavos + totalExtras)}</span>
+                <span>{minha.canceladaEm ? "Total" : "Próxima fatura"}</span>
+                <span className="tabular-nums">{formatarDinheiro((minha.canceladaEm ? 0 : minha.plano.precoCentavos) + totalExtras)}</span>
               </p>
+              {minha.canceladaEm && <p className="mt-1 text-xs text-couro-400">O link de pagamento chega por e-mail ou SMS, enviado pelo Asaas.</p>}
             </div>
           )}
           {atual && (
@@ -75,9 +78,36 @@ export default async function Plano({ params }: { params: Promise<{ slug: string
               {atual.servicos.map((s) => <li key={s.id} className="flex items-center gap-2"><Check className="size-4 text-[var(--cor)]" /> {s.nome}</li>)}
             </ul>
           )}
-          {minha?.asaasId && <p className="mt-4 text-sm text-couro-700">Cobrança automática ativa: a mensalidade é cobrada todo mês e o plano renova sozinho.</p>}
-          {minha?.status === "ATIVA" && minha.linkPagamento && <a href={minha.linkPagamento} className={botao}>Pagar mensalidade</a>}
+          {minha?.asaasId && !minha.canceladaEm && (
+            <p className="mt-4 text-sm text-couro-700">
+              Cobrança automática no cartão: a mensalidade é debitada todo mês e o plano renova sozinho. Próxima renovação em {formatarDia(minha.pagoAte)}.
+            </p>
+          )}
+          {minha?.canceladaEm && (
+            <p className="mt-4 rounded-xl bg-fundo p-3 text-sm text-couro-700">
+              Assinatura cancelada: nenhuma nova cobrança será feita. Você continua usando o plano até {formatarDia(minha.pagoAte)}.
+            </p>
+          )}
+          {minha?.status === "ATIVA" && minha.linkPagamento && (
+            <div className="mt-4 rounded-xl bg-poste-vermelho/10 p-3 text-sm text-poste-vermelho">
+              A cobrança da mensalidade no seu cartão não foi aprovada. Atualize o cartão para continuar usando o plano.
+              <a href={minha.linkPagamento} className={botao}>Atualizar cartão</a>
+            </div>
+          )}
           {plano.pagoAte < diaLocal() && !minha?.linkPagamento && <p className="mt-4 rounded-xl bg-poste-vermelho/10 p-3 text-sm text-poste-vermelho">A mensalidade está em aberto. Acerte na próxima visita para continuar usando o plano.</p>}
+          {minha?.asaasId && minha.status === "ATIVA" && !minha.canceladaEm && (
+            <details className="group mt-5 border-t border-black/[0.06] pt-4">
+              <summary className="cursor-pointer list-none text-sm font-medium text-couro-400 hover:text-poste-vermelho [&::-webkit-details-marker]:hidden">Cancelar assinatura</summary>
+              <FormAcao acao={cancelarPeloCliente.bind(null, slug)} className="mt-3 grid gap-2">
+                <input type="hidden" name="id" value={minha.id} />
+                <p className="text-sm text-couro-700">
+                  As cobranças no cartão param agora e você continua usando o plano até {formatarDia(minha.pagoAte)}.
+                  {minha.extras.length > 0 && " Os extras em aberto serão cobrados à parte."}
+                </p>
+                <button className="w-full rounded-xl border border-poste-vermelho/30 py-2.5 text-sm font-semibold text-poste-vermelho">Sim, cancelar assinatura</button>
+              </FormAcao>
+            </details>
+          )}
         </div>
       ) : (
         <p className="text-sm text-couro-700">Você ainda não é assinante. Conheça os planos:</p>
@@ -95,9 +125,9 @@ export default async function Plano({ params }: { params: Promise<{ slug: string
               <input type="hidden" name="planoId" value={p.id} />
               <input name="cpf" defaultValue={cliente.cpf ?? ""} className="input" placeholder="Seu CPF" inputMode="numeric" required aria-label="Seu CPF" />
               <button className="inline-flex w-full items-center justify-center rounded-xl bg-[var(--cor)] px-4 py-3 font-semibold text-[var(--cor-texto)]">
-                Assinar e pagar online
+                Assinar com cartão de crédito
               </button>
-              <p className="text-center text-xs text-couro-400">Pix, cartão ou boleto. Cobrança automática todo mês; cancele quando quiser com a barbearia.</p>
+              <p className="text-center text-xs text-couro-400">Você cadastra o cartão uma vez e a mensalidade é cobrada automaticamente todo mês. Cancele quando quiser aqui no app.</p>
             </FormAcao>
           ) : (
             b.telefone && (

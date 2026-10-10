@@ -379,7 +379,8 @@ model Assinatura {
   inicio        DateTime  @default(now())
   pagoAte       String // "2026-11-09": cobertura vale até esse dia
   asaasId       String?   @unique // assinatura recorrente no Asaas
-  linkPagamento String? // link da cobrança em aberto mais recente
+  linkPagamento String? // link para cadastrar o cartão (1ª cobrança) ou atualizá-lo (cobrança recusada)
+  canceladaEm   DateTime? // cancelada pelo cliente: não cobra mais e vale até pagoAte
   criadoEm      DateTime  @default(now())
 
   pagamentos PagamentoAssinatura[]

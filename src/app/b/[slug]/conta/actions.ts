@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ErroAsaas } from "@/lib/asaas";
 import { exigirCliente, entrarComoCliente, sairDoCliente } from "@/lib/clienteAuth";
-import { ErroClube, assinarClubeOnline } from "@/lib/clubeOnline";
+import { ErroClube, assinarClubeOnline, cancelarAssinaturaDoClube } from "@/lib/clubeOnline";
 import { LimiteDoPlano } from "@/lib/planosSistema";
 import { db } from "@/lib/db";
 import { somenteDigitos } from "@/lib/formato";
@@ -91,4 +91,22 @@ export async function assinarPeloCliente(slug: string, _: Resultado, form: FormD
   revalidatePath("/painel", "layout");
   if (link) redirect(link);
   return { ok: "Assinatura criada. O link de pagamento aparece aqui em instantes." };
+}
+
+/** O próprio cliente cancela a assinatura: para de cobrar e o plano vale até o fim do período pago. */
+export async function cancelarPeloCliente(slug: string, _: Resultado, form: FormData): Promise<Resultado> {
+  const cliente = await exigirCliente(slug);
+  const a = await db.assinatura.findFirst({
+    where: { id: String(form.get("id") ?? ""), clienteId: cliente.id, status: { in: ["ATIVA", "AGUARDANDO"] }, canceladaEm: null },
+  });
+  if (!a) return { erro: "Assinatura não encontrada." };
+  try {
+    await cancelarAssinaturaDoClube(cliente.barbeariaId, a.id, { peloCliente: true });
+  } catch (e) {
+    if (e instanceof ErroClube) return { erro: e.message };
+    throw e;
+  }
+  revalidatePath(`/b/${slug}`, "layout");
+  revalidatePath("/painel", "layout");
+  return { ok: "Assinatura cancelada. Nenhuma nova cobrança será feita." };
 }

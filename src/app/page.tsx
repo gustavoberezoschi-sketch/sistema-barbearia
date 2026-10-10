@@ -39,7 +39,7 @@ const FRASE =
 
 const RECURSOS = [
   { t: "Agendamento online", d: "Link próprio da barbearia, funciona no celular, sem aplicativo." },
-  { t: "Clube de assinatura", d: "Planos mensais com cobrança automática por Pix, cartão ou boleto." },
+  { t: "Clube de assinatura", d: "Planos mensais cobrados sozinhos no cartão do cliente, todo mês." },
   { t: "Lembretes no WhatsApp", d: "Mensagem pronta com um toque e confirmação por link." },
   { t: "Comandas e caixa", d: "Serviços e produtos, sangria, suprimento e fechamento." },
   { t: "Estoque", d: "Baixa automática na venda e aviso de produto acabando." },
@@ -56,7 +56,7 @@ const PASSOS = [
 
 const PERGUNTAS = [
   { p: "Meu cliente precisa baixar aplicativo?", r: "Não. Ele agenda e acessa a área dele pelo navegador do celular, a partir do link da sua barbearia." },
-  { p: "Como recebo as mensalidades do clube?", r: "Pelo Asaas, instituição de pagamento autorizada pelo Banco Central. A barbearia tem a própria conta, e o dinheiro cai direto nela. O cliente paga por Pix, cartão ou boleto." },
+  { p: "Como recebo as mensalidades do clube?", r: "Pelo Asaas, instituição de pagamento autorizada pelo Banco Central. A barbearia tem a própria conta, e o dinheiro cai direto nela. O cliente cadastra o cartão uma vez e a mensalidade é debitada automaticamente todo mês, até ele cancelar pelo app." },
   { p: "Os lembretes de WhatsApp têm custo?", r: "Não. O sistema monta a mensagem e abre o seu WhatsApp. Você só aperta enviar." },
   { p: "Funciona no celular?", r: "Sim. O painel funciona no celular, no tablet e no computador, e cada barbeiro pode ter o próprio login." },
   { p: "E os dados dos meus clientes?", r: "Ficam guardados com senha criptografada e conexão segura, e são usados só para o funcionamento da sua barbearia, como manda a LGPD. Veja a nossa Política de Privacidade." },
@@ -163,7 +163,7 @@ export default async function Landing() {
               Receita que entra <span className="lp-serifa">todo mês.</span>
             </h2>
             <p className="mt-6 max-w-lg text-lg text-white/75">
-              Monte planos como “corte ilimitado” ou “corte + barba”. O cliente assina pelo celular, paga online e o plano renova sozinho. Mesmo na semana de agenda fraca, o dinheiro entra.
+              Monte planos como “corte ilimitado” ou “corte + barba”. O cliente assina pelo celular, cadastra o cartão uma vez e a mensalidade é cobrada sozinha todo mês. Mesmo na semana de agenda fraca, o dinheiro entra.
             </p>
           </div>
           <div data-revela style={atraso(0.15)}><Calculadora /></div>

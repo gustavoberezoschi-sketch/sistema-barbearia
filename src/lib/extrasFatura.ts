@@ -24,7 +24,7 @@ async function comTrava<T>(assinaturaId: string, fn: () => Promise<T>) {
 export async function assinaturaComFatura(clienteId: string, barbeariaId: string) {
   const barbearia = await db.barbearia.findUnique({ where: { id: barbeariaId }, select: { cobrancaOnlineClube: true, asaasApiKey: true } });
   if (!barbearia?.cobrancaOnlineClube || !barbearia.asaasApiKey) return null;
-  return db.assinatura.findFirst({ where: { clienteId, barbeariaId, status: "ATIVA", asaasId: { not: null }, pagoAte: { gte: diaLocal() } } });
+  return db.assinatura.findFirst({ where: { clienteId, barbeariaId, status: "ATIVA", asaasId: { not: null }, canceladaEm: null, pagoAte: { gte: diaLocal() } } });
 }
 
 /** Lança no Asaas um extra já registrado: soma na próxima cobrança da assinatura ou cria uma cobrança no mesmo vencimento. */
@@ -40,7 +40,7 @@ export async function lancarNaFatura(extraId: string) {
 
   return comTrava(extra.assinaturaId, async () => {
     try {
-      const pendente = await proximaCobrancaPendente(assinaturaId, chave);
+      const pendente = extra.assinatura.canceladaEm ? null : await proximaCobrancaPendente(assinaturaId, chave);
       let cobranca;
       if (pendente) {
         const descricao = `${pendente.description ?? "Mensalidade"} + ${extra.descricao}`;

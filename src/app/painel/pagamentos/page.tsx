@@ -79,7 +79,7 @@ export default async function Pagamentos() {
     <div className="mx-auto max-w-5xl">
       <Cabecalho
         titulo="Pagamentos online"
-        descricao="Receba a mensalidade do clube por Pix, cartão ou boleto, com cobrança automática todo mês. O dinheiro cai na conta da barbearia."
+        descricao="O cliente cadastra o cartão uma vez e a mensalidade do clube é debitada automaticamente todo mês. O dinheiro cai na conta da barbearia."
       />
 
       {!asaasConfigurado() ? (
@@ -118,7 +118,7 @@ export default async function Pagamentos() {
                 <li><strong>1.</strong> Preencha os dados: abrimos uma conta no Asaas em nome da barbearia.</li>
                 <li><strong>2.</strong> Envie os documentos pedidos (foto do documento e selfie, pelo celular).</li>
                 <li><strong>3.</strong> Com a conta aprovada, ligue a cobrança online do clube.</li>
-                <li><strong>4.</strong> O cliente paga por Pix, cartão ou boleto, e o plano dele renova sozinho.</li>
+                <li><strong>4.</strong> O cliente cadastra o cartão uma vez e a mensalidade é debitada sozinha todo mês, até ele cancelar.</li>
               </ol>
             </Secao>
             {taxas}

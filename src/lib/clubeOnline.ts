@@ -1,4 +1,5 @@
-import { ErroAsaas, cancelarAssinaturaAsaas, criarAssinatura, criarCliente, linkDaPrimeiraCobranca } from "./asaas";
+import { ErroAsaas, buscarCobranca, cancelarAssinaturaAsaas, cobrancasPendentes, criarAssinatura, criarCliente, excluirCobranca, linkDaPrimeiraCobranca } from "./asaas";
+import { lancarNaFatura } from "./extrasFatura";
 import { db } from "./db";
 import { garantirVagaDeAssinante } from "./planosSistema";
 import { diaLocal, somarDias } from "./tempo";
@@ -23,8 +24,9 @@ export function cpfValido(cpf: string) {
 
 /**
  * Cria a assinatura do clube com cobrança recorrente no Asaas (subconta da barbearia).
- * A assinatura fica "AGUARDANDO" até o primeiro pagamento chegar pelo webhook.
- * Devolve o link para o cliente pagar (Pix, cartão ou boleto).
+ * A assinatura é no cartão de crédito: o cliente informa o cartão no link da 1ª cobrança e as
+ * próximas mensalidades são debitadas sozinhas, sem ele precisar aprovar nada.
+ * Fica "AGUARDANDO" até o primeiro pagamento chegar pelo webhook.
  */
 export async function assinarClubeOnline(p: { barbeariaId: string; clienteId: string; planoId: string; cpf: string }) {
   const [b, cliente, plano, config] = await Promise.all([
@@ -64,6 +66,7 @@ export async function assinarClubeOnline(p: { barbeariaId: string; clienteId: st
         description: `${plano.nome} · ${b.nome}`,
         externalReference: local.id,
         split,
+        billingType: "CREDIT_CARD",
       },
       chave,
     );
@@ -76,17 +79,41 @@ export async function assinarClubeOnline(p: { barbeariaId: string; clienteId: st
   }
 }
 
-/** Cancela a assinatura local e, se houver, a cobrança recorrente no Asaas. */
-export async function cancelarAssinaturaDoClube(barbeariaId: string, assinaturaId: string) {
+/**
+ * Cancela a cobrança recorrente no Asaas.
+ * Pela barbearia: encerra na hora. Pelo cliente: para de cobrar, mas o plano vale até o fim do período já pago.
+ * Extras que estavam na próxima mensalidade viram uma cobrança avulsa.
+ */
+export async function cancelarAssinaturaDoClube(barbeariaId: string, assinaturaId: string, opcoes: { peloCliente?: boolean } = {}) {
   const a = await db.assinatura.findFirst({ where: { id: assinaturaId, barbeariaId }, include: { barbearia: true } });
   if (!a) return;
-  if (a.asaasId && a.barbearia.asaasApiKey) {
+  const extrasPendentes = await db.extraFatura.findMany({ where: { assinaturaId: a.id, status: "PENDENTE", asaasPagamentoId: { not: null } } });
+  const chave = a.barbearia.asaasApiKey;
+  if (a.asaasId && chave) {
     try {
-      await cancelarAssinaturaAsaas(a.asaasId, a.barbearia.asaasApiKey);
+      await cancelarAssinaturaAsaas(a.asaasId, chave);
     } catch (e) {
       if (!(e instanceof ErroAsaas)) throw e;
       throw new ErroClube(`Não foi possível cancelar a cobrança no Asaas: ${e.message}`);
     }
+    // garante que nenhuma mensalidade em aberto continue valendo depois do cancelamento
+    const pendentes = await cobrancasPendentes(a.asaasId, chave).catch(() => []);
+    for (const c of pendentes) await excluirCobranca(c.id, chave).catch(() => null);
   }
-  await db.assinatura.update({ where: { id: a.id }, data: { status: "CANCELADA", linkPagamento: null } });
+  const continuaAteOFim = opcoes.peloCliente && a.status === "ATIVA" && a.pagoAte >= diaLocal();
+  await db.assinatura.update({
+    where: { id: a.id },
+    data: continuaAteOFim ? { canceladaEm: new Date(), linkPagamento: null } : { status: "CANCELADA", canceladaEm: a.canceladaEm ?? new Date(), linkPagamento: null },
+  });
+  // extras que estavam na mensalidade (que não existe mais) vão para uma cobrança avulsa
+  for (const e of extrasPendentes) {
+    try {
+      const cobranca = chave && e.asaasPagamentoId ? await buscarCobranca(e.asaasPagamentoId, chave).catch(() => null) : null;
+      if (cobranca && !cobranca.subscription && cobranca.status === "PENDING") continue; // já era avulsa
+      await db.extraFatura.update({ where: { id: e.id }, data: { asaasPagamentoId: null, vencimento: null } });
+      await lancarNaFatura(e.id);
+    } catch {
+      // fica "não lançado" na comanda, com o botão para tentar de novo
+    }
+  }
 }
