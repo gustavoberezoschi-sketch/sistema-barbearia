@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { FORMA_ASAAS } from "@/lib/asaas";
 import { tokenConfere } from "@/lib/cripto";
 import { db } from "@/lib/db";
+import { quitarExtrasDaCobranca } from "@/lib/extrasFatura";
 import { somarMeses } from "@/lib/tempo";
 
 // Avisos do Asaas (conta principal e subcontas). Responde 200 para tudo que não é
@@ -33,7 +34,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ignorado: "corpo inválido" });
   }
   const { event, payment } = corpo;
-  if (!event || !payment?.subscription) return NextResponse.json({ ok: true, ignorado: "sem assinatura" });
+  if (!event || !payment?.id) return NextResponse.json({ ok: true, ignorado: "sem cobrança" });
+
+  // Cobrança avulsa de extras (quando não havia mensalidade em aberto para somar)
+  if (!payment.subscription) {
+    if (PAGO.has(event)) await quitarExtrasDaCobranca(payment.id);
+    revalidatePath("/painel", "layout");
+    return NextResponse.json({ ok: true, tipo: "extra" });
+  }
 
   // 1) Mensalidade do clube de uma barbearia (subconta)
   const assinatura = await db.assinatura.findUnique({ where: { asaasId: payment.subscription } });
@@ -42,14 +50,18 @@ export async function POST(req: Request) {
       await db.assinatura.update({ where: { id: assinatura.id }, data: { linkPagamento: payment.invoiceUrl } });
     }
     if (PAGO.has(event) && !(await db.pagamentoAssinatura.findUnique({ where: { asaasPagamentoId: payment.id } }))) {
+      // extras que vieram nesta cobrança já contam como venda na comanda: aqui fica só a mensalidade
+      const extras = await quitarExtrasDaCobranca(payment.id);
+      const valor = Math.round(payment.value * 100);
+      const liquido = payment.netValue !== undefined ? Math.round(payment.netValue * 100) : null;
       await db.$transaction([
         db.pagamentoAssinatura.create({
           data: {
             assinaturaId: assinatura.id,
-            valorCentavos: Math.round(payment.value * 100),
+            valorCentavos: Math.max(0, valor - extras),
             formaPagamento: FORMA_ASAAS[payment.billingType ?? ""] ?? "PIX",
             asaasPagamentoId: payment.id,
-            valorLiquidoCentavos: payment.netValue !== undefined ? Math.round(payment.netValue * 100) : null,
+            valorLiquidoCentavos: liquido === null ? null : Math.max(0, Math.round(liquido * (1 - extras / Math.max(1, valor)))),
           },
         }),
         db.assinatura.update({

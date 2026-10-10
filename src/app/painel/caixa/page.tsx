@@ -121,6 +121,11 @@ export default async function Caixa({ searchParams }: { searchParams: Promise<{ 
                     ))}
                   </ul>
                 )}
+                {resumo.naFatura > 0 && (
+                  <p className="mt-3 rounded-xl bg-latao-50 p-3 text-xs text-couro-700">
+                    + {formatarDinheiro(resumo.naFatura)} lançados na fatura do clube. Entram quando o cliente pagar a mensalidade.
+                  </p>
+                )}
               </Secao>
 
               <Secao titulo="Movimentações">

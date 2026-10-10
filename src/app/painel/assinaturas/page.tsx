@@ -20,7 +20,7 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
   const hoje = diaLocal();
   const [planos, assinaturas, clientes, servicos, barbearia] = await Promise.all([
     db.plano.findMany({ where: { barbeariaId }, include: { servicos: true, _count: { select: { assinaturas: { where: { status: "ATIVA" } } } } }, orderBy: [{ ativo: "desc" }, { precoCentavos: "asc" }] }),
-    db.assinatura.findMany({ where: { barbeariaId, status: { in: ["ATIVA", "AGUARDANDO"] } }, include: { cliente: true, plano: true }, orderBy: [{ status: "asc" }, { pagoAte: "asc" }] }),
+    db.assinatura.findMany({ where: { barbeariaId, status: { in: ["ATIVA", "AGUARDANDO"] } }, include: { cliente: true, plano: true, extras: { where: { status: "PENDENTE" }, select: { valorCentavos: true } } }, orderBy: [{ status: "asc" }, { pagoAte: "asc" }] }),
     db.cliente.findMany({ where: { barbeariaId }, orderBy: { nome: "asc" }, select: { id: true, nome: true, telefone: true } }),
     db.servico.findMany({ where: { barbeariaId, ativo: true }, orderBy: [{ categoria: "asc" }, { nome: "asc" }] }),
     db.barbearia.findUniqueOrThrow({ where: { id: barbeariaId }, select: { nome: true, asaasApiKey: true, asaasStatus: true, cobrancaOnlineClube: true } }),
@@ -66,6 +66,9 @@ export default async function Assinaturas({ searchParams }: { searchParams: Prom
                         </p>
                       </div>
                       {a.asaasId && <Etiqueta tom="azul">Cobrança automática</Etiqueta>}
+                      {a.extras.length > 0 && (
+                        <Etiqueta tom="latao">+ {formatarDinheiro(a.extras.reduce((t, e) => t + e.valorCentavos, 0))} em extras na fatura</Etiqueta>
+                      )}
                       {aguardando ? (
                         <Etiqueta tom="latao">Aguardando 1º pagamento</Etiqueta>
                       ) : atrasada ? (

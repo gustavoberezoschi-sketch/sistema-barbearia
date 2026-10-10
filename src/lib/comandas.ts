@@ -188,6 +188,13 @@ export async function fecharComanda(
     ]);
     if (itens.length === 0) throw new ErroComanda("Adicione pelo menos um item.");
 
+    const naFatura = opcoes.formaPagamento === "FATURA";
+    const assinaturaFatura = naFatura && cliente
+      ? await tx.assinatura.findFirst({ where: { clienteId: cliente.id, barbeariaId, status: "ATIVA", asaasId: { not: null }, pagoAte: { gte: diaLocal() } } })
+      : null;
+    if (naFatura && (!assinaturaFatura || !barbearia.cobrancaOnlineClube || !barbearia.asaasApiKey))
+      throw new ErroComanda("Só dá para lançar na fatura de assinantes com cobrança automática do clube.");
+
     const subtotal = subtotalDosItens(itens);
     const desconto = Math.min(Math.max(0, opcoes.descontoCentavos), subtotal);
     const cashbackUsado =
@@ -217,7 +224,14 @@ export async function fecharComanda(
         data: { status: "CONCLUIDO", formaPagamento: total > 0 ? opcoes.formaPagamento : null },
       });
     }
+    if (naFatura && total <= 0) throw new ErroComanda("Não há valor para lançar na fatura.");
     const caixa = await tx.caixa.findFirst({ where: { filialId: comanda.filialId, fechadoEm: null } });
+    if (assinaturaFatura) {
+      const nomes = itens.filter((i) => !i.cobertoPorPlano).map((i) => (i.quantidade > 1 ? `${i.quantidade}x ${i.descricao}` : i.descricao));
+      await tx.extraFatura.create({
+        data: { barbeariaId, assinaturaId: assinaturaFatura.id, comandaId, valorCentavos: total, descricao: `Comanda #${comanda.numero}: ${nomes.join(", ")}`.slice(0, 200) },
+      });
+    }
     return tx.comanda.update({
       where: { id: comandaId },
       data: {
@@ -264,6 +278,7 @@ export async function cancelarComanda(barbeariaId: string, comandaId: string) {
         data: { status: "AGENDADO", formaPagamento: null },
       });
     }
+    await tx.extraFatura.updateMany({ where: { comandaId, status: "PENDENTE" }, data: { status: "CANCELADO" } });
     await tx.comanda.update({ where: { id: comandaId }, data: { status: "CANCELADA", agendamentoId: null } });
   });
 }

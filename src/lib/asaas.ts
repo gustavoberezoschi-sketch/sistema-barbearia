@@ -140,6 +140,37 @@ export async function cancelarAssinaturaAsaas(assinaturaId: string, apiKeyCifrad
   return chamar(`/subscriptions/${assinaturaId}`, { chave: apiKeyCifrada ? daSubconta(apiKeyCifrada) : undefined, metodo: "DELETE" });
 }
 
+// ---------- Cobranças avulsas e ajustes (extras na fatura do clube) ----------
+
+export type Cobranca = { id: string; value: number; dueDate: string; status: string; billingType?: string; description?: string; subscription?: string | null };
+
+/** Próxima cobrança em aberto de uma assinatura (a que vence primeiro). */
+export async function proximaCobrancaPendente(assinaturaId: string, apiKeyCifrada: string) {
+  const r = await chamar<{ data?: Cobranca[] }>(`/subscriptions/${assinaturaId}/payments?status=PENDING`, { chave: daSubconta(apiKeyCifrada) });
+  return (r.data ?? []).filter((c) => c.status === "PENDING").sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0] ?? null;
+}
+
+export async function buscarCobranca(id: string, apiKeyCifrada: string) {
+  return chamar<Cobranca>(`/payments/${id}`, { chave: daSubconta(apiKeyCifrada) });
+}
+
+/** Muda o valor (e a descrição) de uma cobrança em aberto, mantendo vencimento e forma. */
+export async function alterarCobranca(c: Cobranca, novoValor: number, descricao: string, apiKeyCifrada: string) {
+  return chamar<Cobranca>(`/payments/${c.id}`, {
+    chave: daSubconta(apiKeyCifrada),
+    metodo: "POST",
+    corpo: { billingType: c.billingType ?? "UNDEFINED", value: Math.round(novoValor * 100) / 100, dueDate: c.dueDate, description: descricao.slice(0, 500) },
+  });
+}
+
+export async function criarCobranca(dados: { customer: string; value: number; dueDate: string; description: string; externalReference: string }, apiKeyCifrada: string) {
+  return chamar<Cobranca>("/payments", { chave: daSubconta(apiKeyCifrada), metodo: "POST", corpo: { ...dados, billingType: "UNDEFINED" } });
+}
+
+export async function excluirCobranca(id: string, apiKeyCifrada: string) {
+  return chamar(`/payments/${id}`, { chave: daSubconta(apiKeyCifrada), metodo: "DELETE" });
+}
+
 export const FORMA_ASAAS: Record<string, string> = {
   PIX: "PIX",
   CREDIT_CARD: "CARTAO_CREDITO",

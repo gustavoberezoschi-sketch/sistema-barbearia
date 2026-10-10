@@ -25,9 +25,10 @@ export default async function Plano({ params }: { params: Promise<{ slug: string
   const online = cobraOnline(b);
   const minha = await db.assinatura.findFirst({
     where: { clienteId: cliente.id, status: { in: ["ATIVA", "AGUARDANDO"] } },
-    include: { plano: true },
+    include: { plano: true, extras: { where: { status: "PENDENTE" }, orderBy: { criadoEm: "asc" } } },
     orderBy: { criadoEm: "desc" },
   });
+  const totalExtras = minha?.extras.reduce((s, e) => s + e.valorCentavos, 0) ?? 0;
   const botao = "mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[var(--cor)] px-4 py-3 font-semibold text-[var(--cor-texto)]";
 
   return (
@@ -52,6 +53,23 @@ export default async function Plano({ params }: { params: Promise<{ slug: string
               <dd className="font-semibold">{plano.limite ? `${plano.usados} de ${plano.limite} atendimento(s)` : `${plano.usados} atendimento(s) · ilimitado`}</dd>
             </div>
           </dl>
+          {minha && minha.extras.length > 0 && (
+            <div className="mt-4 rounded-xl border border-black/[0.06] p-3 text-sm">
+              <p className="font-semibold">Extras na próxima fatura</p>
+              <ul className="mt-2 space-y-1">
+                {minha.extras.map((e) => (
+                  <li key={e.id} className="flex justify-between gap-3">
+                    <span className="text-couro-700">{e.descricao.replace(/^Comanda #\d+: /, "")}</span>
+                    <span className="shrink-0 tabular-nums">{formatarDinheiro(e.valorCentavos)}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 flex justify-between border-t border-black/[0.06] pt-2 font-semibold">
+                <span>Próxima fatura</span>
+                <span className="tabular-nums">{formatarDinheiro(minha.plano.precoCentavos + totalExtras)}</span>
+              </p>
+            </div>
+          )}
           {atual && (
             <ul className="mt-4 space-y-1.5 text-sm">
               {atual.servicos.map((s) => <li key={s.id} className="flex items-center gap-2"><Check className="size-4 text-[var(--cor)]" /> {s.nome}</li>)}

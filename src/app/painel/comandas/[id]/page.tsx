@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 import { estoquePorProduto } from "@/lib/estoque";
 import { FORMAS_PAGAMENTO, NOME_FORMA, formatarDinheiro, linkWhatsApp } from "@/lib/formato";
 import { formatarDataHora } from "@/lib/tempo";
-import { estornarComanda, excluirItem, finalizarComanda, incluirProduto, incluirServico } from "../actions";
+import { estornarComanda, estornarFechada, excluirItem, finalizarComanda, incluirProduto, incluirServico, relancarExtra } from "../actions";
 
 export const metadata: Metadata = { title: "Comanda" };
 export const dynamic = "force-dynamic";
@@ -24,6 +24,7 @@ export default async function Comanda({ params }: { params: Promise<{ id: string
   if (!comanda) notFound();
 
   const aberta = comanda.status === "ABERTA";
+  const extra = await db.extraFatura.findUnique({ where: { comandaId: comanda.id } });
   const [servicos, produtos, barbeiros, assinatura] = await Promise.all([
     db.servico.findMany({ where: { barbeariaId: sessao.barbeariaId, ativo: true }, orderBy: [{ categoria: "asc" }, { nome: "asc" }] }),
     db.produto.findMany({ where: { barbeariaId: sessao.barbeariaId, ativo: true }, orderBy: { nome: "asc" } }),
@@ -44,6 +45,8 @@ export default async function Comanda({ params }: { params: Promise<{ id: string
     comanda.cashbackGeradoCentavos ? `Você ganhou ${formatarDinheiro(comanda.cashbackGeradoCentavos)} de cashback para a próxima visita!` : "",
     "Obrigado pela preferência! ✂️",
   ].filter(Boolean).join("\n");
+
+  const podeFatura = !!assinatura?.asaasId && comanda.barbearia.cobrancaOnlineClube && !!comanda.barbearia.asaasApiKey;
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -189,6 +192,15 @@ export default async function Comanda({ params }: { params: Promise<{ id: string
                       </label>
                     ))}
                   </div>
+                  {podeFatura && (
+                    <label className="mt-2 block cursor-pointer">
+                      <input type="radio" name="formaPagamento" value="FATURA" className="peer sr-only" />
+                      <span className="flex items-center justify-center gap-2 rounded-xl border border-latao-500/40 bg-latao-50 px-3 py-2.5 text-center text-sm font-medium text-latao-700 transition peer-checked:border-latao-500 peer-checked:bg-latao-500 peer-checked:text-white">
+                        <Crown className="size-4" /> Lançar na fatura do clube
+                      </span>
+                    </label>
+                  )}
+                  {podeFatura && <p className="mt-1.5 text-xs text-couro-400">O valor entra na próxima mensalidade do cliente, sem pagar agora.</p>}
                 </fieldset>
                 <button className="btn-destaque py-3 text-base">Receber e fechar</button>
               </FormAcao>
@@ -202,6 +214,22 @@ export default async function Comanda({ params }: { params: Promise<{ id: string
                 {comanda.cashbackUsadoCentavos > 0 && <div className="flex justify-between"><dt className="text-couro-400">Cashback usado</dt><dd>-{formatarDinheiro(comanda.cashbackUsadoCentavos)}</dd></div>}
                 <div className="flex justify-between border-t border-black/[0.06] pt-2 text-base font-semibold"><dt>Total pago</dt><dd className="numero">{formatarDinheiro(comanda.totalCentavos)}</dd></div>
                 <div className="flex justify-between"><dt className="text-couro-400">Pagamento</dt><dd>{NOME_FORMA[comanda.formaPagamento ?? ""] ?? "—"}</dd></div>
+                {extra && (
+                  <div className="flex justify-between">
+                    <dt className="text-couro-400">Fatura</dt>
+                    <dd>
+                      {extra.status === "PAGO" ? (
+                        <Etiqueta tom="verde">Pago</Etiqueta>
+                      ) : extra.status === "CANCELADO" ? (
+                        <Etiqueta tom="neutro">Retirado</Etiqueta>
+                      ) : extra.asaasPagamentoId ? (
+                        <Etiqueta tom="latao">Vence {extra.vencimento?.split("-").reverse().join("/")}</Etiqueta>
+                      ) : (
+                        <Etiqueta tom="vermelho">Não lançado</Etiqueta>
+                      )}
+                    </dd>
+                  </div>
+                )}
                 {comanda.cashbackGeradoCentavos > 0 && <div className="flex justify-between"><dt className="text-couro-400">Cashback gerado</dt><dd className="text-emerald-700">+{formatarDinheiro(comanda.cashbackGeradoCentavos)}</dd></div>}
                 {comanda.fechadaEm && <div className="flex justify-between"><dt className="text-couro-400">Fechada em</dt><dd>{formatarDataHora(comanda.fechadaEm)}</dd></div>}
               </dl>
@@ -212,11 +240,18 @@ export default async function Comanda({ params }: { params: Promise<{ id: string
                       <MessageCircle className="size-4 text-emerald-600" /> Enviar recibo por WhatsApp
                     </a>
                   )}
+                  {extra?.status === "PENDENTE" && !extra.asaasPagamentoId && (
+                    <FormAcao acao={relancarExtra} className="grid gap-1">
+                      <input type="hidden" name="comandaId" value={comanda.id} />
+                      {extra.erro && <p className="text-xs text-poste-vermelho">{extra.erro}</p>}
+                      <button className="btn-secundario w-full"><Crown className="size-4" /> Lançar na fatura</button>
+                    </FormAcao>
+                  )}
                   {!sessao.barbeiroId && (
-                    <form action={estornarComanda}>
+                    <FormAcao acao={estornarFechada} className="grid gap-1">
                       <input type="hidden" name="comandaId" value={comanda.id} />
                       <button className="btn-perigo w-full">Cancelar e estornar</button>
-                    </form>
+                    </FormAcao>
                   )}
                 </div>
               )}

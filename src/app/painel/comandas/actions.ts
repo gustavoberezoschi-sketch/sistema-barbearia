@@ -12,7 +12,9 @@ import {
   fecharComanda,
   removerItem,
 } from "@/lib/comandas";
+import { ErroAsaas } from "@/lib/asaas";
 import { db } from "@/lib/db";
+import { ErroExtra, lancarNaFatura, retirarDaFatura } from "@/lib/extrasFatura";
 import { FORMAS_PAGAMENTO, lerDinheiro } from "@/lib/formato";
 import type { Resultado } from "../actions";
 
@@ -31,7 +33,7 @@ async function tentar(fn: () => Promise<unknown>, ok?: string): Promise<Resultad
   try {
     await fn();
   } catch (e) {
-    if (e instanceof ErroComanda) return { erro: e.message };
+    if (e instanceof ErroComanda || e instanceof ErroExtra || e instanceof ErroAsaas) return { erro: e.message };
     throw e;
   }
   revalidatePath("/painel", "layout");
@@ -88,16 +90,48 @@ export async function finalizarComanda(_: Resultado, form: FormData): Promise<Re
   const sessao = await exigirSessao();
   const forma = texto(form, "formaPagamento");
   const desconto = texto(form, "desconto") ? lerDinheiro(texto(form, "desconto")) : 0;
-  if (!(forma in FORMAS_PAGAMENTO)) return { erro: "Escolha a forma de pagamento." };
+  if (!(forma in FORMAS_PAGAMENTO) && forma !== "FATURA") return { erro: "Escolha a forma de pagamento." };
   if (desconto === null) return { erro: "Desconto inválido. Exemplo: 5,00" };
-  return tentar(async () => {
+  let comandaId = "";
+  const r = await tentar(async () => {
     const c = await conferir(sessao, texto(form, "comandaId"));
+    comandaId = c.id;
     await fecharComanda(sessao.barbeariaId, c.id, {
       formaPagamento: forma,
       descontoCentavos: desconto,
       usarCashback: form.get("usarCashback") === "on",
     });
   }, "Comanda fechada.");
+  if (forma !== "FATURA" || r?.erro) return r;
+  const extra = await db.extraFatura.findUnique({ where: { comandaId } });
+  if (!extra) return r;
+  const lancado = await tentar(() => lancarNaFatura(extra.id), "Comanda fechada e lançada na próxima fatura do cliente.");
+  if (lancado?.erro) return { erro: `Comanda fechada, mas não deu para lançar na fatura agora: ${lancado.erro} Use "Lançar na fatura" para tentar de novo.` };
+  return lancado;
+}
+
+/** Tenta de novo lançar no Asaas um extra que falhou. */
+export async function relancarExtra(_: Resultado, form: FormData): Promise<Resultado> {
+  const sessao = await exigirSessao();
+  return tentar(async () => {
+    const c = await conferir(sessao, texto(form, "comandaId"));
+    const extra = await db.extraFatura.findUnique({ where: { comandaId: c.id } });
+    if (!extra) throw new ErroComanda("Essa comanda não foi para a fatura.");
+    await lancarNaFatura(extra.id);
+  }, "Lançado na próxima fatura do cliente.");
+}
+
+/** Cancela uma comanda fechada; se ela foi para a fatura do clube, tira o valor da cobrança antes. */
+export async function estornarFechada(_: Resultado, form: FormData): Promise<Resultado> {
+  const sessao = await exigirSessao();
+  if (sessao.papel === "BARBEIRO") return { erro: "Só o dono ou gerente pode estornar." };
+  const r = await tentar(async () => {
+    const c = await conferir(sessao, texto(form, "comandaId"));
+    await retirarDaFatura(c.id);
+    await cancelarComanda(sessao.barbeariaId, c.id);
+  });
+  if (r?.erro) return r;
+  redirect("/painel/comandas");
 }
 
 export async function estornarComanda(form: FormData) {

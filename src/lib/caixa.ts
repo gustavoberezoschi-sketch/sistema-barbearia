@@ -18,8 +18,10 @@ export async function resumoDoCaixa(caixaId: string) {
   });
 
   const porForma: Record<string, number> = {};
+  let naFatura = 0; // vai para a próxima cobrança do clube: não entra no caixa de hoje
   for (const c of caixa.comandas) {
-    if (c.totalCentavos > 0 && c.formaPagamento) porForma[c.formaPagamento] = (porForma[c.formaPagamento] ?? 0) + c.totalCentavos;
+    if (c.formaPagamento === "FATURA") naFatura += c.totalCentavos;
+    else if (c.totalCentavos > 0 && c.formaPagamento) porForma[c.formaPagamento] = (porForma[c.formaPagamento] ?? 0) + c.totalCentavos;
   }
   for (const p of caixa.pagamentos) porForma[p.formaPagamento] = (porForma[p.formaPagamento] ?? 0) + p.valorCentavos;
 
@@ -30,5 +32,5 @@ export async function resumoDoCaixa(caixaId: string) {
   const entradas = Object.values(porForma).reduce((s, v) => s + v, 0);
   const dinheiroEsperado = caixa.saldoInicialCentavos + (porForma.DINHEIRO ?? 0) + suprimentos - sangrias - despesas;
 
-  return { caixa, porForma, suprimentos, sangrias, despesas, entradas, dinheiroEsperado };
+  return { caixa, porForma, naFatura, suprimentos, sangrias, despesas, entradas, dinheiroEsperado };
 }

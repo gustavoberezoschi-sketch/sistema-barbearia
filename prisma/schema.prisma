@@ -63,6 +63,7 @@ model Barbearia {
   banners           Banner[]
   pagamentosSistema PagamentoSistema[]
   parceiros         Parceiro[]
+  extrasFatura      ExtraFatura[]
 }
 
 // Unidade (filial) da barbearia: endereço, expediente, equipe, agenda e caixa próprios.
@@ -298,7 +299,8 @@ model Comanda {
   abertaEm               DateTime     @default(now())
   fechadaEm              DateTime?
 
-  itens ComandaItem[]
+  itens       ComandaItem[]
+  extraFatura ExtraFatura?
 
   @@index([barbeariaId, fechadaEm])
 }
@@ -381,6 +383,28 @@ model Assinatura {
   criadoEm      DateTime  @default(now())
 
   pagamentos PagamentoAssinatura[]
+  extras     ExtraFatura[]
+}
+
+/// Serviço ou produto extra de um assinante lançado na próxima cobrança do clube, em vez de pago na hora.
+model ExtraFatura {
+  id               String     @id @default(cuid())
+  barbeariaId      String
+  barbearia        Barbearia  @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  assinaturaId     String
+  assinatura       Assinatura @relation(fields: [assinaturaId], references: [id], onDelete: Cascade)
+  comandaId        String     @unique
+  comanda          Comanda    @relation(fields: [comandaId], references: [id], onDelete: Cascade)
+  descricao        String
+  valorCentavos    Int
+  status           String     @default("PENDENTE") // PENDENTE | PAGO | CANCELADO
+  asaasPagamentoId String? // cobrança do Asaas onde o valor entrou (vazio = ainda não lançado)
+  vencimento       String? // "2026-11-10"
+  erro             String? // último erro ao lançar no Asaas
+  criadoEm         DateTime   @default(now())
+
+  @@index([asaasPagamentoId])
+  @@index([assinaturaId, status])
 }
 
 model PagamentoAssinatura {
