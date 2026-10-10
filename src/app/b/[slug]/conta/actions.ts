@@ -9,6 +9,7 @@ import { ErroClube, assinarClubeOnline, cancelarAssinaturaDoClube } from "@/lib/
 import { LimiteDoPlano } from "@/lib/planosSistema";
 import { db } from "@/lib/db";
 import { somenteDigitos } from "@/lib/formato";
+import { notificarCliente } from "@/lib/push";
 import type { Resultado } from "@/app/painel/actions";
 
 const texto = (form: FormData, campo: string) => String(form.get(campo) ?? "").trim();
@@ -109,4 +110,28 @@ export async function cancelarPeloCliente(slug: string, _: Resultado, form: Form
   revalidatePath(`/b/${slug}`, "layout");
   revalidatePath("/painel", "layout");
   return { ok: "Assinatura cancelada. Nenhuma nova cobrança será feita." };
+}
+
+/** Guarda o celular do cliente para receber notificações do app e manda um aviso de teste. */
+export async function salvarInscricaoPush(slug: string, i: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<{ erro?: string }> {
+  const cliente = await exigirCliente(slug);
+  if (!/^https:\/\//.test(i?.endpoint ?? "") || !i.keys?.p256dh || !i.keys?.auth) return { erro: "Não foi possível ativar neste navegador." };
+  await db.pushInscricao.upsert({
+    where: { endpoint: i.endpoint },
+    create: { barbeariaId: cliente.barbeariaId, clienteId: cliente.id, endpoint: i.endpoint, p256dh: i.keys.p256dh, auth: i.keys.auth },
+    update: { barbeariaId: cliente.barbeariaId, clienteId: cliente.id, p256dh: i.keys.p256dh, auth: i.keys.auth },
+  });
+  const b = await db.barbearia.findUnique({ where: { id: cliente.barbeariaId }, select: { nome: true } });
+  await notificarCliente(cliente.id, {
+    titulo: "Lembretes ativados ✂️",
+    texto: `Pronto, ${cliente.nome.split(" ")[0]}! A ${b?.nome ?? "barbearia"} vai te avisar aqui um dia antes de cada horário.`,
+    url: `/b/${slug}/conta`,
+    icone: `/b/${slug}/icone/192`,
+  });
+  return {};
+}
+
+export async function removerInscricaoPush(slug: string, endpoint: string) {
+  const cliente = await exigirCliente(slug);
+  await db.pushInscricao.deleteMany({ where: { endpoint, clienteId: cliente.id } });
 }

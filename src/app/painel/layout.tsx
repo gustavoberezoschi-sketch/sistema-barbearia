@@ -1,3 +1,4 @@
+import { RegistrarApp } from "@/components/AppDaBarbearia";
 import { Menu } from "@/components/Menu";
 import { exigirSessao } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -43,6 +44,7 @@ export default async function PainelLayout({ children }: { children: React.React
 
   return (
     <div className="min-h-screen">
+      <RegistrarApp />
       <Menu
         barbearia={barbearia?.nome ?? ""}
         logo={barbearia?.logo ?? null}

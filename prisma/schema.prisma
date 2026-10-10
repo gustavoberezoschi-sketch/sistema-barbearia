@@ -64,6 +64,7 @@ model Barbearia {
   pagamentosSistema PagamentoSistema[]
   parceiros         Parceiro[]
   extrasFatura      ExtraFatura[]
+  inscricoesPush    PushInscricao[]
 }
 
 // Unidade (filial) da barbearia: endereço, expediente, equipe, agenda e caixa próprios.
@@ -177,9 +178,10 @@ model Cliente {
   asaasClienteId        String?
   criadoEm              DateTime  @default(now())
 
-  agendamentos Agendamento[]
-  comandas     Comanda[]
-  assinaturas  Assinatura[]
+  agendamentos   Agendamento[]
+  comandas       Comanda[]
+  assinaturas    Assinatura[]
+  inscricoesPush PushInscricao[]
 
   @@unique([barbeariaId, telefone])
 }
@@ -207,6 +209,7 @@ model Agendamento {
   grupo                String? // agendamentos de vários serviços em sequência compartilham o grupo
   confirmacaoEnviadaEm DateTime?
   lembreteEnviadoEm    DateTime?
+  pushLembreteEm       DateTime? // lembrete enviado como notificação no app
   criadoEm             DateTime  @default(now())
 
   comanda Comanda?
@@ -484,4 +487,21 @@ model ConfigSistema {
   whatsappSuporte   String? // número para as barbearias pedirem suporte ou mudança de plano
   taxaPlataformaPct Int     @default(0) // % de cada pagamento online que vai para o KlarezaBarber (split)
   asaasWalletId     String? // carteira da conta principal (destino do split)
+  vapidPublica      String? // chaves das notificações do app (Web Push), criadas sozinhas no 1º uso
+  vapidPrivada      String?
+}
+
+/// Celular do cliente inscrito para receber notificações do app da barbearia.
+model PushInscricao {
+  id          String    @id @default(cuid())
+  barbeariaId String
+  barbearia   Barbearia @relation(fields: [barbeariaId], references: [id], onDelete: Cascade)
+  clienteId   String
+  cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  endpoint    String    @unique
+  p256dh      String
+  auth        String
+  criadoEm    DateTime  @default(now())
+
+  @@index([clienteId])
 }

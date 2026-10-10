@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   title: { default: "KlarezaBarber", template: "%s · KlarezaBarber" },
   description: "KlarezaBarber: agendamento online e gestão completa para barbearias",
   applicationName: "KlarezaBarber",
+  appleWebApp: { capable: true, title: "KlarezaBarber", statusBarStyle: "default" },
+  icons: { apple: "/icone/180" },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0f0f0e" };

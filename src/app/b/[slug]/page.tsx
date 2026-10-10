@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CalendarCheck, Clock, Crown, Instagram, MapPin, MessageCircle, Star, UserRound } from "lucide-react";
+import { InstalarApp } from "@/components/AppDaBarbearia";
 import { Carrossel } from "@/components/Carrossel";
 import { clienteLogado } from "@/lib/clienteAuth";
 import { db } from "@/lib/db";
@@ -108,6 +109,7 @@ export default async function PaginaPublica({ params }: Props) {
         {b.suspensa && (
           <p className="rounded-2xl bg-white p-5 text-center text-couro-700 shadow-sm">O agendamento online está indisponível no momento. Fale com a barbearia pelo WhatsApp.</p>
         )}
+        {!b.suspensa && <InstalarApp slug={slug} nome={b.nome} />}
         {b.banners.length > 0 && <Carrossel banners={b.banners} />}
 
         {b.barbeiros.length > 0 && (

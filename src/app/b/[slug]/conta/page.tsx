@@ -8,6 +8,9 @@ import { db } from "@/lib/db";
 import { formatarDinheiro } from "@/lib/formato";
 import { planoDoCliente } from "@/lib/publico";
 import { CartaoAgendamento } from "./CartaoAgendamento";
+import { InstalarApp, LembretesNoCelular } from "@/components/AppDaBarbearia";
+import { chavesVapid } from "@/lib/push";
+import { removerInscricaoPush, salvarInscricaoPush } from "./actions";
 
 export const metadata: Metadata = { title: "Minha conta" };
 
@@ -22,10 +25,12 @@ export default async function InicioCliente({ params }: { params: Promise<{ slug
     planoDoCliente(cliente.id),
     atendimentosDoCliente(cliente.id, "futuros", 3),
   ]);
+  const { publica } = await chavesVapid();
 
   return (
     <div className="space-y-4">
       <h1 className="font-display text-2xl font-bold">Olá, {cliente.nome.split(" ")[0]}</h1>
+      <InstalarApp slug={slug} nome={b.nome} />
       <Carrossel banners={b.banners} />
 
       {plano ? (
@@ -70,6 +75,7 @@ export default async function InicioCliente({ params }: { params: Promise<{ slug
       <Link href={`/b/${slug}/agendar`} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--cor)] py-3.5 font-bold text-[var(--cor-texto)] shadow-sm">
         <Plus className="size-5" /> Novo agendamento
       </Link>
+      <LembretesNoCelular chavePublica={publica} salvar={salvarInscricaoPush.bind(null, slug)} remover={removerInscricaoPush.bind(null, slug)} />
     </div>
   );
 }
