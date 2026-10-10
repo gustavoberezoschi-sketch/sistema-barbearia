@@ -5,7 +5,8 @@ export const EMPRESA = {
   proprietaria: "Rotta Digital", // dona do KlarezaBarber
   razaoSocial: null as string | null,
   cnpj: null as string | null,
-  email: null as string | null, // e-mail do encarregado de dados (LGPD)
-  cidadeForo: null as string | null, // ex.: "Curitiba/PR"
-  atualizadoEm: "9 de outubro de 2026",
+  email: "gustavoberezoschi@gmail.com" as string | null, // e-mail do encarregado de dados (LGPD)
+  telefone: "41999669004" as string | null, // WhatsApp de contato (só dígitos, com DDD)
+  cidadeForo: "Curitiba/PR" as string | null,
+  atualizadoEm: "10 de outubro de 2026",
 };

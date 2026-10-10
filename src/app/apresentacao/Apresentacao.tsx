@@ -660,7 +660,7 @@ function Final({ whatsapp, para, recomecar, video, falando }: { whatsapp: string
       )}
       <A d={1.3} c="ap-largura" className="ap-poste mt-12 h-2 w-40 rounded-full" />
       <A d={1.5} className="mt-6 text-xs text-couro-400">
-        KlarezaBarber é uma marca da Rotta Digital · Klaro é um personagem fictício · voz sintética Piper (Edresson, CC BY 4.0)
+        KlarezaBarber é uma marca da Rotta Digital · Klaro é um personagem fictício
       </A>
     </div>
   );
@@ -669,6 +669,8 @@ function Final({ whatsapp, para, recomecar, video, falando }: { whatsapp: string
 // ---------- apresentação ----------
 
 const BASE = [5500, 7500, 9000, 8500, 8000, 8500, 8000, 7500, 8000, 7500, 9000, 0];
+/** Narração em áudio. Desligada até termos uma voz aprovada; as legendas continuam. */
+const NARRACAO = false;
 /** Quando o Klaro começa a falar em cada cena (ms). */
 export const INICIO_FALA = 700;
 /** Cada cena dura o necessário para a animação e para a fala do Klaro terminar. */
@@ -827,7 +829,7 @@ export function Apresentacao({ para, whatsapp, planos, video = false }: Props) {
 
       <Legenda key={`leg-${cena}`} cena={cena} avatar={cena !== 0 && cena !== total - 1} falando={falando} video={video} />
 
-      {!som && !video && (
+      {NARRACAO && !som && !video && (
         <button
           type="button"
           onClick={(e) => {
@@ -846,7 +848,9 @@ export function Apresentacao({ para, whatsapp, planos, video = false }: Props) {
           <Controle rotulo="Anterior" onClick={() => ir(cena - 1)}><ChevronLeft className="size-4" /></Controle>
           <Controle rotulo={pausado ? "Continuar" : "Pausar"} onClick={() => setPausado((p) => !p)}>{pausado ? <Play className="size-4" /> : <Pause className="size-4" />}</Controle>
           <Controle rotulo="Próxima" onClick={() => ir(cena + 1)}><ChevronRight className="size-4" /></Controle>
-          <Controle rotulo={som ? "Desligar som" : "Ligar som"} onClick={() => setSom((v) => !v)}>{som ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}</Controle>
+          {NARRACAO && (
+            <Controle rotulo={som ? "Desligar som" : "Ligar som"} onClick={() => setSom((v) => !v)}>{som ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}</Controle>
+          )}
           <Controle rotulo="Tela cheia" onClick={telaCheia}><Expand className="size-4" /></Controle>
         </div>
       </div>

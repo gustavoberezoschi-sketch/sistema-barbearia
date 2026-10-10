@@ -169,7 +169,7 @@ export default async function Privacidade() {
       <section>
         <h2>10. Encarregado pelo tratamento de dados</h2>
         <p>
-          O canal do encarregado (DPO) do KlarezaBarber é {contato}.
+          Fale com o encarregado pelo tratamento de dados (DPO) do KlarezaBarber por {contato}.
         </p>
       </section>
 

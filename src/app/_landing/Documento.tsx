@@ -37,7 +37,14 @@ export function Documento({ titulo, resumo, children }: { titulo: string; resumo
 
 /** Como falar com a gente: e-mail, se cadastrado, ou o WhatsApp de suporte. */
 export function Contato({ whatsapp }: { whatsapp: string | null }) {
-  if (EMPRESA.email) return <a href={`mailto:${EMPRESA.email}`}>{EMPRESA.email}</a>;
-  if (whatsapp) return <a href={`https://wa.me/55${whatsapp}`} target="_blank" rel="noopener">WhatsApp de atendimento</a>;
+  const fone = EMPRESA.telefone ?? whatsapp;
+  const zap = fone && (
+    <a href={`https://wa.me/55${fone}`} target="_blank" rel="noopener">
+      WhatsApp ({fone.slice(0, 2)}) {fone.slice(2, -4)}-{fone.slice(-4)}
+    </a>
+  );
+  if (EMPRESA.email && zap) return <>e-mail (<a href={`mailto:${EMPRESA.email}`}>{EMPRESA.email}</a>) ou {zap}</>;
+  if (EMPRESA.email) return <>e-mail (<a href={`mailto:${EMPRESA.email}`}>{EMPRESA.email}</a>)</>;
+  if (zap) return zap;
   return <>nossos canais de atendimento</>;
 }

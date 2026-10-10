@@ -295,6 +295,7 @@ export default async function Landing() {
                 {EMPRESA.cnpj ? ` · CNPJ ${EMPRESA.cnpj}` : ""}
               </p>
               {EMPRESA.email && <p className="mt-1">{EMPRESA.email}</p>}
+              {EMPRESA.telefone && <p className="mt-1">WhatsApp ({EMPRESA.telefone.slice(0, 2)}) {EMPRESA.telefone.slice(2, -4)}-{EMPRESA.telefone.slice(-4)} · Curitiba/PR</p>}
             </div>
             <nav className="grid grid-cols-2 gap-x-10 gap-y-2 sm:grid-cols-3">
               <Link href="/login" className="hover:text-white">Entrar no painel</Link>

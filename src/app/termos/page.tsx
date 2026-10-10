@@ -128,7 +128,7 @@ export default async function Termos() {
 
       <section>
         <h2>9. Contato e foro</h2>
-        <p>Dúvidas sobre estes Termos: {contato}.</p>
+        <p>Dúvidas sobre estes Termos: fale com a gente por {contato}.</p>
         <p>
           Estes Termos seguem as leis brasileiras.
           {EMPRESA.cidadeForo ? ` Fica eleito o foro da comarca de ${EMPRESA.cidadeForo}, ressalvados os direitos do consumidor.` : " Eventuais conflitos serão resolvidos no foro previsto em lei, ressalvados os direitos do consumidor."}
