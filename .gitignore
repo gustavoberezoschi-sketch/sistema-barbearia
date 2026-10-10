@@ -9,3 +9,4 @@ prisma/*.db-journal
 
 # vídeos gerados da apresentação
 *.mp4
+/Klaro-voz-*.mp3
