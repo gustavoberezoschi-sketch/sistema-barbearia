@@ -18,11 +18,16 @@ import {
   RotateCcw,
   Scissors,
   User,
+  Volume2,
+  VolumeX,
   Wallet,
 } from "lucide-react";
 import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Marca } from "@/components/Marca";
 import { formatarDinheiro, linkWhatsApp } from "@/lib/formato";
+import FALA_MS from "./duracoes.json";
+import FALAS from "./falas.json";
+import { Klaro } from "./Klaro";
 import "./apresentacao.css";
 
 type Plano = { nome: string; mensal: number; anual: number; unidades: number | null; assinantes: number | null };
@@ -119,12 +124,13 @@ function Cena({ rotulo, titulo, texto, itens, visual }: { rotulo: string; titulo
 
 // ---------- cenas ----------
 
-function Abertura({ para }: { para: string | null }) {
+function Abertura({ para, falando }: { para: string | null; falando: boolean }) {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
       <A d={0.1} c="ap-largura" className="ap-poste mb-10 h-3 w-48 rounded-full sm:w-72" />
-      <A d={0.4} c="ap-pop">
-        <span className="grid size-20 place-items-center rounded-3xl bg-white font-display text-5xl font-bold text-tinta sm:size-24 sm:text-6xl">K</span>
+      <A d={0.3} c="ap-pop" className="relative">
+        <Klaro falando={falando} acenando className="size-36 drop-shadow-2xl sm:size-44" />
+        <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-white px-3 py-0.5 text-xs font-bold tracking-[0.2em] text-tinta">KLARO</span>
       </A>
       <A d={0.8}><h1 className="mt-6 font-display text-5xl font-bold tracking-tight text-white sm:text-7xl">Klareza<span className="text-verde-claro">Barber</span></h1></A>
       <A d={1.3}><p className="mt-4 max-w-xl text-lg text-couro-300 sm:text-2xl">Sua barbearia organizada, com a agenda cheia e recebendo todo mês.</p></A>
@@ -137,6 +143,9 @@ function Abertura({ para }: { para: string | null }) {
   );
 }
 
+/** Cada problema é riscado quando o Klaro fala dele (segundos desde o início da cena). */
+const RISCOS = [5.2, 9.2, 11.2, 13.2];
+
 function Problema() {
   const dores = ["Agenda no caderno e no WhatsApp", "Cliente que marca e não aparece", "Mensalidade que ninguém lembra de cobrar", "Caixa que não bate no fim do dia"];
   return (
@@ -145,11 +154,11 @@ function Problema() {
       <ul className="space-y-4 sm:space-y-5">
         {dores.map((t, i) => (
           <A key={t} as="li" d={0.3 + i * 0.35} c="ap-esq" className="font-display text-2xl font-bold text-white sm:text-4xl">
-            <span className="ap-risca" style={{ "--r": `${2.4 + i * 0.3}s` } as CSSProperties}>{t}</span>
+            <span className="ap-risca" style={{ "--r": `${RISCOS[i]}s` } as CSSProperties}>{t}</span>
           </A>
         ))}
       </ul>
-      <A d={4.3} className="mt-10">
+      <A d={13.8} className="mt-10">
         <p className="font-display text-2xl font-bold text-verde-claro sm:text-4xl">Dá para resolver tudo isso num lugar só.</p>
       </A>
     </div>
@@ -613,11 +622,14 @@ function Planos({ planos }: { planos: Plano[] }) {
   );
 }
 
-function Final({ whatsapp, para, recomecar, video }: { whatsapp: string | null; para: string | null; recomecar: () => void; video: boolean }) {
+function Final({ whatsapp, para, recomecar, video, falando }: { whatsapp: string | null; para: string | null; recomecar: () => void; video: boolean; falando: boolean }) {
   const msg = para ? `Olá! Vi a apresentação do KlarezaBarber e quero colocar a ${para} no sistema.` : "Olá! Vi a apresentação do KlarezaBarber e quero saber mais.";
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
-      <A d={0.1} c="ap-pop"><Marca tamanho="lg" clara /></A>
+      <A d={0.1} c="ap-pop" className="flex flex-col items-center gap-5">
+        <Klaro falando={falando} acenando className="size-28 drop-shadow-2xl sm:size-32" />
+        <Marca tamanho="lg" clara />
+      </A>
       <A d={0.4}>
         <h2 className="mt-8 max-w-3xl font-display text-3xl leading-tight font-bold tracking-tight text-white sm:text-6xl">
           Vamos colocar {para ? <span className="text-verde-claro">{para}</span> : "a sua barbearia"} no ar?
@@ -647,14 +659,50 @@ function Final({ whatsapp, para, recomecar, video }: { whatsapp: string | null; 
       </A>
       )}
       <A d={1.3} c="ap-largura" className="ap-poste mt-12 h-2 w-40 rounded-full" />
-      <A d={1.5} className="mt-6 text-xs text-couro-400">KlarezaBarber é uma marca da Rotta Digital</A>
+      <A d={1.5} className="mt-6 text-xs text-couro-400">
+        KlarezaBarber é uma marca da Rotta Digital · Klaro é um personagem fictício · voz sintética Piper (Edresson, CC BY 4.0)
+      </A>
     </div>
   );
 }
 
 // ---------- apresentação ----------
 
-const DURACAO = [5500, 7500, 9000, 8500, 8000, 8500, 8000, 7500, 8000, 7500, 9000, 0];
+const BASE = [5500, 7500, 9000, 8500, 8000, 8500, 8000, 7500, 8000, 7500, 9000, 0];
+/** Quando o Klaro começa a falar em cada cena (ms). */
+export const INICIO_FALA = 700;
+/** Cada cena dura o necessário para a animação e para a fala do Klaro terminar. */
+const DURACAO = BASE.map((b, i) => (b ? Math.max(b, INICIO_FALA + FALA_MS[i] + 1300) : 0));
+
+/** Legenda do Klaro: as palavras acendem no ritmo da fala. */
+function Legenda({ cena, avatar, falando, video }: { cena: number; avatar: boolean; falando: boolean; video: boolean }) {
+  const palavras = FALAS[cena].legenda.split(" ");
+  const [ditas, setDitas] = useState(0);
+  useEffect(() => {
+    const t0 = Date.now();
+    const id = setInterval(() => {
+      const p = (Date.now() - t0 - INICIO_FALA) / FALA_MS[cena];
+      setDitas(Math.max(0, Math.min(palavras.length, Math.ceil(p * palavras.length))));
+      if (p >= 1) clearInterval(id);
+    }, 80);
+    return () => clearInterval(id);
+  }, [cena, palavras.length]);
+  return (
+    <div className={`ap-sobe pointer-events-none absolute inset-x-3 z-20 mx-auto flex max-w-4xl items-end gap-2.5 sm:inset-x-6 sm:gap-4 ${video ? "bottom-4 sm:bottom-6" : "bottom-16"}`} style={atraso(0.2)}>
+      {avatar && (
+        <div className="relative shrink-0">
+          <Klaro falando={falando} className="size-16 drop-shadow-xl sm:size-24" />
+          <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-white px-1.5 text-[9px] font-bold tracking-[0.15em] text-tinta sm:text-[10px]">KLARO</span>
+        </div>
+      )}
+      <p className="min-w-0 flex-1 rounded-2xl rounded-bl-sm bg-white/95 px-3.5 py-2.5 text-[13px] leading-snug font-medium text-tinta shadow-2xl sm:px-5 sm:py-3.5 sm:text-lg">
+        {palavras.map((w, i) => (
+          <span key={i} className={`leg-palavra ${i < ditas ? "dita" : ""}`}>{w} </span>
+        ))}
+      </p>
+    </div>
+  );
+}
 
 export function Apresentacao({ para, whatsapp, planos, video = false }: Props) {
   const nome = para ?? "Barbearia do Centro";
@@ -665,6 +713,43 @@ export function Apresentacao({ para, whatsapp, planos, video = false }: Props) {
   const total = DURACAO.length;
 
   const ir = useCallback((i: number) => setCena(Math.max(0, Math.min(total - 1, i))), [total]);
+  const [falando, setFalando] = useState(false);
+  // Marca o início da apresentação para sincronizar a narração na gravação do vídeo
+  useEffect(() => {
+    if (video) (window as unknown as { __inicioApresentacao?: number }).__inicioApresentacao = Date.now();
+  }, [video]);
+  const [som, setSom] = useState(false);
+  const audio = useRef<HTMLAudioElement | null>(null);
+
+  // Boca do Klaro mexendo enquanto dura a fala da cena
+  useEffect(() => {
+    setFalando(false);
+    const a = setTimeout(() => setFalando(true), INICIO_FALA);
+    const b = setTimeout(() => setFalando(false), INICIO_FALA + FALA_MS[cena]);
+    return () => {
+      clearTimeout(a);
+      clearTimeout(b);
+    };
+  }, [cena]);
+
+  // Narração (só quando o som está ligado; o navegador exige um toque antes)
+  useEffect(() => {
+    if (!som || video) return;
+    const a = new Audio(`/apresentacao/fala-${String(cena).padStart(2, "0")}.mp3`);
+    audio.current = a;
+    const id = setTimeout(() => a.play().catch(() => {}), INICIO_FALA);
+    return () => {
+      clearTimeout(id);
+      a.pause();
+      audio.current = null;
+    };
+  }, [cena, som, video]);
+  useEffect(() => {
+    const a = audio.current;
+    if (!a) return;
+    if (pausado) a.pause();
+    else if (a.currentTime > 0 && !a.ended) a.play().catch(() => {});
+  }, [pausado]);
 
   useEffect(() => {
     if (cenaDoTimer.current !== cena) {
@@ -692,7 +777,7 @@ export function Apresentacao({ para, whatsapp, planos, video = false }: Props) {
   }, [cena, ir]);
 
   const cenas: ReactNode[] = [
-    <Abertura key="a" para={para} />,
+    <Abertura key="a" para={para} falando={falando} />,
     <Problema key="p" />,
     <Agendamento key="ag" nome={nome} />,
     <Agenda key="ad" />,
@@ -703,7 +788,7 @@ export function Apresentacao({ para, whatsapp, planos, video = false }: Props) {
     <AreaCliente key="ac" nome={nome} />,
     <Unidades key="u" />,
     <Planos key="pl" planos={planos} />,
-    <Final key="fi" whatsapp={whatsapp} para={para} recomecar={() => ir(0)} video={video} />,
+    <Final key="fi" whatsapp={whatsapp} para={para} recomecar={() => ir(0)} video={video} falando={falando} />,
   ];
 
   const clicar = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -736,9 +821,24 @@ export function Apresentacao({ para, whatsapp, planos, video = false }: Props) {
 
       <div className="absolute top-7 left-4 z-30 sm:left-6"><Marca tamanho="sm" clara /></div>
 
-      <main key={cena} className="relative z-10 mx-auto h-full max-w-6xl px-4 pt-16 pb-20 sm:px-8 sm:pt-20 sm:pb-24">
+      <main key={cena} className={`relative z-10 mx-auto h-full max-w-6xl px-4 pt-16 sm:px-8 sm:pt-20 ${video ? "pb-28 sm:pb-36" : "pb-40 sm:pb-48"}`}>
         {cenas[cena]}
       </main>
+
+      <Legenda key={`leg-${cena}`} cena={cena} avatar={cena !== 0 && cena !== total - 1} falando={falando} video={video} />
+
+      {!som && !video && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setSom(true);
+          }}
+          className="absolute top-6 right-4 z-30 flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-tinta shadow-lg sm:right-6"
+        >
+          <Volume2 className="size-4" /> Ouvir o Klaro
+        </button>
+      )}
 
       <div className={`absolute inset-x-0 bottom-0 z-30 flex items-center justify-between px-4 pb-4 sm:px-6 ${video ? "hidden" : ""}`}>
         <span className="text-xs text-couro-400 tabular-nums">{cena + 1} / {total}</span>
@@ -746,6 +846,7 @@ export function Apresentacao({ para, whatsapp, planos, video = false }: Props) {
           <Controle rotulo="Anterior" onClick={() => ir(cena - 1)}><ChevronLeft className="size-4" /></Controle>
           <Controle rotulo={pausado ? "Continuar" : "Pausar"} onClick={() => setPausado((p) => !p)}>{pausado ? <Play className="size-4" /> : <Pause className="size-4" />}</Controle>
           <Controle rotulo="Próxima" onClick={() => ir(cena + 1)}><ChevronRight className="size-4" /></Controle>
+          <Controle rotulo={som ? "Desligar som" : "Ligar som"} onClick={() => setSom((v) => !v)}>{som ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}</Controle>
           <Controle rotulo="Tela cheia" onClick={telaCheia}><Expand className="size-4" /></Controle>
         </div>
       </div>
